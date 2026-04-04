@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { allocatePoints, getUserWallet } = require('../controllers/rewardController');
+const { verifyAuth } = require('../middleware/authMiddleware');
 
-router.post('/allocate', (req, res) => res.json({ message: 'Allocate points stub' }));
-router.get('/wallet', (req, res) => res.json({ message: 'Get wallet info stub' }));
+router.post('/allocate', verifyAuth, allocatePoints);
+router.get('/wallet', verifyAuth, getUserWallet);
 
 module.exports = router;

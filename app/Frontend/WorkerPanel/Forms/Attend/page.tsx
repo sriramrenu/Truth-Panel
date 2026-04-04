@@ -29,26 +29,26 @@ interface FormResponse {
 	formId: string;
 	formTitle: string;
 	submittedAt: string;
+	workerEmail: string;
+	workerName: string;
 	answers: QuestionAnswer[];
 }
 
 const FORMS_KEY = 'truth_panel_forms';
-const RESPONSES_KEY = 'truth_panel_responses';
+
+const getCurrentUser = () => {
+	try {
+		const raw = sessionStorage.getItem('truth_panel_user');
+		if (!raw) return null;
+		return JSON.parse(raw) as { email: string; name: string; role: string };
+	} catch {
+		return null;
+	}
+};
 
 const readForms = (): TruthPanelForm[] => {
 	try {
 		const raw = localStorage.getItem(FORMS_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-};
-
-const readResponses = (): FormResponse[] => {
-	try {
-		const raw = localStorage.getItem(RESPONSES_KEY);
 		if (!raw) return [];
 		const parsed = JSON.parse(raw);
 		return Array.isArray(parsed) ? parsed : [];
@@ -115,12 +115,16 @@ export default function AttendFormPage() {
 
 	const handleSubmit = () => {
 		if (!form) return;
+		const user = getCurrentUser();
+		if (!user) return;
 
 		const response: FormResponse = {
 			responseId: Date.now().toString(),
 			formId: form.id,
 			formTitle: form.title,
 			submittedAt: new Date().toISOString(),
+			workerEmail: user.email,
+			workerName: user.name,
 			answers: form.questions.map((question) => ({
 				questionId: question.id,
 				questionText: question.questionText,
@@ -128,8 +132,9 @@ export default function AttendFormPage() {
 			})),
 		};
 
-		const existing = readResponses();
-		localStorage.setItem(RESPONSES_KEY, JSON.stringify([...existing, response]));
+		const userKey = `truth_panel_responses__${user.email}`;
+		const existing: FormResponse[] = JSON.parse(localStorage.getItem(userKey) || '[]');
+		localStorage.setItem(userKey, JSON.stringify([...(Array.isArray(existing) ? existing : []), response]));
 		router.replace('/Frontend/WorkerPanel/Forms/Success');
 	};
 

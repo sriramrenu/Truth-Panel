@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface FormQuestion {
@@ -29,11 +29,22 @@ interface FormResponse {
 	formId: string;
 	formTitle: string;
 	submittedAt: string;
+	workerEmail: string;
+	workerName: string;
 	answers: QuestionAnswer[];
 }
 
 const FORMS_KEY = 'truth_panel_forms';
-const RESPONSES_KEY = 'truth_panel_responses';
+
+const getCurrentUser = () => {
+	try {
+		const raw = sessionStorage.getItem('truth_panel_user');
+		if (!raw) return null;
+		return JSON.parse(raw) as { email: string; name: string; role: string };
+	} catch {
+		return null;
+	}
+};
 
 const readForms = (): TruthPanelForm[] => {
 	try {
@@ -46,28 +57,27 @@ const readForms = (): TruthPanelForm[] => {
 	}
 };
 
-const readResponses = (): FormResponse[] => {
-	try {
-		const raw = localStorage.getItem(RESPONSES_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-};
-
 export default function WorkerFormsPage() {
 	const router = useRouter();
 	const [forms, setForms] = useState<TruthPanelForm[]>([]);
-	const [responses, setResponses] = useState<FormResponse[]>([]);
+	const [submittedFormIds, setSubmittedFormIds] = useState<string[]>([]);
 
 	useEffect(() => {
-		setForms(readForms());
-		setResponses(readResponses());
-	}, []);
+		const user = getCurrentUser();
+		if (!user) {
+			router.push('/Frontend/Login');
+			return;
+		}
 
-	const submittedFormIds = useMemo(() => responses.map((response) => response.formId), [responses]);
+		const storedForms: TruthPanelForm[] = JSON.parse(localStorage.getItem(FORMS_KEY) || '[]');
+		setForms(Array.isArray(storedForms) ? storedForms : []);
+
+		const userKey = `truth_panel_responses__${user.email}`;
+		const storedResponses: FormResponse[] = JSON.parse(localStorage.getItem(userKey) || '[]');
+		const submittedIds = (Array.isArray(storedResponses) ? storedResponses : []).map((r) => r.formId);
+		setSubmittedFormIds(submittedIds);
+	}, [router]);
+
 	const isSubmitted = (formId: string) => submittedFormIds.includes(formId);
 
 	return (

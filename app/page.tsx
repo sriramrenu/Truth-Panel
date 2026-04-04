@@ -5,15 +5,32 @@ import { useRouter } from 'next/navigation';
 
 type UserRole = 'admin' | 'worker';
 
-const getUserRole = (email: string): UserRole => {
-  const normalized = email.trim().toLowerCase();
-
-  if (normalized.includes('admin')) {
-    return 'admin';
-  }
-
-  return 'worker';
-};
+const MOCK_USERS: Array<{ email: string; password: string; role: UserRole; name: string }> = [
+  {
+    email: 'admin@truthpanel.com',
+    password: 'admin123',
+    role: 'admin',
+    name: 'Admin',
+  },
+  {
+    email: 'worker1@truthpanel.com',
+    password: 'worker123',
+    role: 'worker',
+    name: 'Arun Kumar',
+  },
+  {
+    email: 'worker2@truthpanel.com',
+    password: 'worker123',
+    role: 'worker',
+    name: 'Priya Sharma',
+  },
+  {
+    email: 'worker3@truthpanel.com',
+    password: 'worker123',
+    role: 'worker',
+    name: 'Ravi Menon',
+  },
+];
 
 export default function Home() {
   const router = useRouter();
@@ -25,20 +42,33 @@ export default function Home() {
   const handleLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-
-    if (!trimmedEmail || !trimmedPassword) {
+    if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
+      return;
+    }
+
+    const user = MOCK_USERS.find(
+      (u) => u.email === email.trim().toLowerCase() && u.password === password.trim(),
+    );
+
+    if (!user) {
+      setError('Invalid email or password.');
       return;
     }
 
     setError('');
     setIsSubmitting(true);
 
-    const role = getUserRole(trimmedEmail);
+    sessionStorage.setItem(
+      'truth_panel_user',
+      JSON.stringify({
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      }),
+    );
 
-    if (role === 'admin') {
+    if (user.role === 'admin') {
       router.push('/Frontend/AdminPanel/Dashboard');
       return;
     }
@@ -74,7 +104,10 @@ export default function Home() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError('');
+                }}
                 placeholder="you@example.com"
                 className="w-full rounded-xl border border-[color:var(--OffBlack)]/15 bg-white px-3 py-3 font-[var(--font-inter)] text-sm font-normal text-[var(--OffBlack)] outline-none transition focus:border-[var(--PBlue)] focus:ring-2 focus:ring-[color:var(--PBlue)]/20"
               />
@@ -91,17 +124,20 @@ export default function Home() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError('');
+                }}
                 placeholder="Enter your password"
                 className="w-full rounded-xl border border-[color:var(--OffBlack)]/15 bg-white px-3 py-3 font-[var(--font-inter)] text-sm font-normal text-[var(--OffBlack)] outline-none transition focus:border-[var(--PBlue)] focus:ring-2 focus:ring-[color:var(--PBlue)]/20"
               />
-            </div>
 
-            {error ? (
-              <p className="rounded-lg border border-[color:var(--SYellow)] bg-[color:var(--SYellow)]/15 px-3 py-2 font-[var(--font-inter)] text-sm font-normal text-[var(--OffBlack)]">
-                {error}
-              </p>
-            ) : null}
+              {error ? (
+                <p className="font-[var(--font-inter)] text-xs text-red-500 mt-1">
+                  {error}
+                </p>
+              ) : null}
+            </div>
 
             <button
               type="submit"

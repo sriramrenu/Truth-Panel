@@ -1,6 +1,19 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Poppins , Inter } from 'next/font/google';
 import "./globals.css";
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500'], // Specify the weights you need
+  variable: '--font-poppins', // Optional: for Tailwind or CSS variables
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '300'], // Specify the weights you need
+  variable: '--font-inter', // Optional: for Tailwind or CSS variables
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

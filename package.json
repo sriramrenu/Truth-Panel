@@ -4,13 +4,24 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:backend": "nodemon app/backend/server.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+<<<<<<< HEAD
     "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
+=======
+    "@supabase/supabase-js": "^2.101.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.0",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "joi": "^18.1.2",
+    "morgan": "^1.10.1",
+>>>>>>> 11a237c4d3c790741c82a8cc88d9660fd6ef44ee
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -23,6 +34,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "nodemon": "^3.1.14",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

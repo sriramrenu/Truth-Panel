@@ -16,52 +16,40 @@ type Employee = {
   designation: string;
 };
 
-const mockStats = { forms: 12, employees: 45 };
-
-const mockEmployees: Employee[] = [
-  { name: 'Arun Kumar', designation: 'Field Worker' },
-  { name: 'Priya Sharma', designation: 'Supervisor' },
-  { name: 'Ravi Menon', designation: 'Analyst' },
-];
-
-const formOptions = ['Form A', 'Form B', 'Form C'];
-
-const formPieData: Record<string, PieEntry[]> = {
-  'Form A': [
-    { name: 'Submitted', value: 68 },
-    { name: 'Pending', value: 32 },
-  ],
-  'Form B': [
-    { name: 'Submitted', value: 52 },
-    { name: 'Pending', value: 48 },
-  ],
-  'Form C': [
-    { name: 'Submitted', value: 81 },
-    { name: 'Pending', value: 19 },
-  ],
-};
-
-const pieColors = ['var(--PBlue)', 'var(--SYellow)'];
-
-const getInitials = (name: string) =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  };
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [selectedForm, setSelectedForm] = useState(formOptions[0]);
-  const selectedPieData = formPieData[selectedForm] ?? formPieData[formOptions[0]];
+  const [stats, setStats] = useState({ forms: 0, employees: 0 });
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [formOptions, setFormOptions] = useState<string[]>([]);
+  const [selectedForm, setSelectedForm] = useState('');
+  const [selectedPieData, setSelectedPieData] = useState<PieEntry[]>([{ name: 'Submitted', value: 0 }, { name: 'Pending', value: 0 }]);
+  
   const submittedValue = selectedPieData[0]?.value ?? 0;
   const pendingValue = selectedPieData[1]?.value ?? 0;
 
   useEffect(() => {
     setIsMounted(true);
+    const loadDashboard = async () => {
+      try {
+        const { fetchAllSurveys } = await import('../../../../utils/api');
+        const res = await fetchAllSurveys();
+        if (res?.success) {
+          const surveys = res.data || [];
+          setStats({ forms: surveys.length, employees: 0 });
+          setFormOptions(surveys.map((s: any) => s.title || 'Untitled'));
+          if (surveys.length > 0) setSelectedForm(surveys[0].title || 'Untitled');
+        }
+      } catch (err) {
+        console.error('Failed to load admin dashboard', err);
+      }
+    };
+    loadDashboard();
   }, []);
 
   return (
@@ -76,7 +64,7 @@ export default function DashboardPage() {
                 No. of Forms
               </p>
               <p className="mt-3 font-[var(--font-inter)] text-3xl font-bold text-[var(--OffBlack)]">
-                {mockStats.forms}
+                {stats.forms}
               </p>
             </article>
 
@@ -85,7 +73,7 @@ export default function DashboardPage() {
                 No. of Employees
               </p>
               <p className="mt-3 font-[var(--font-inter)] text-3xl font-bold text-[var(--OffBlack)]">
-                {mockStats.employees}
+                {stats.employees}
               </p>
             </article>
           </div>
@@ -125,7 +113,7 @@ export default function DashboardPage() {
                       stroke="transparent"
                     >
                       {selectedPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={pieColors[index]} />
+                        <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--PBlue)' : 'var(--SYellow)'} />
                       ))}
                     </Pie>
                   </PieChart>
@@ -167,27 +155,31 @@ export default function DashboardPage() {
             </div>
 
             <div className="max-h-[220px] overflow-y-auto">
-              {mockEmployees.map((employee, index) => (
-                <article
-                  key={employee.name}
-                  className={`flex items-center gap-3 px-4 py-3 ${
-                    index !== mockEmployees.length - 1 ? 'border-b border-[color:var(--OffBlack)]/8' : ''
-                  }`}
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--PBlue)] font-[var(--font-poppins)] text-[13px] font-medium text-white">
-                    {getInitials(employee.name)}
-                  </div>
+              {employees.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm font-medium text-gray-500">No employees listed</div>
+              ) : (
+                employees.map((employee, index) => (
+                  <article
+                    key={employee.name}
+                    className={`flex items-center gap-3 px-4 py-3 ${
+                      index !== employees.length - 1 ? 'border-b border-[color:var(--OffBlack)]/8' : ''
+                    }`}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--PBlue)] font-[var(--font-poppins)] text-[13px] font-medium text-white">
+                      {getInitials(employee.name)}
+                    </div>
 
-                  <div className="min-w-0">
-                    <p className="truncate font-[var(--font-poppins)] text-[14px] font-medium text-[var(--OffBlack)]">
-                      {employee.name}
-                    </p>
-                    <p className="font-[var(--font-inter)] text-[12px] font-light text-[var(--OffBlack)]/65">
-                      {employee.designation}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                    <div className="min-w-0">
+                      <p className="truncate font-[var(--font-poppins)] text-[14px] font-medium text-[var(--OffBlack)]">
+                        {employee.name}
+                      </p>
+                      <p className="font-[var(--font-inter)] text-[12px] font-light text-[var(--OffBlack)]/65">
+                        {employee.designation}
+                      </p>
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         </section>

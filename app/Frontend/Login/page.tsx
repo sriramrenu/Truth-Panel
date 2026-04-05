@@ -3,34 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type UserRole = 'admin' | 'worker';
-
-const MOCK_USERS: Array<{ email: string; password: string; role: UserRole; name: string }> = [
-  {
-    email: 'admin@truthpanel.com',
-    password: 'admin123',
-    role: 'admin',
-    name: 'Admin',
-  },
-  {
-    email: 'worker1@truthpanel.com',
-    password: 'worker123',
-    role: 'worker',
-    name: 'Arun Kumar',
-  },
-  {
-    email: 'worker2@truthpanel.com',
-    password: 'worker123',
-    role: 'worker',
-    name: 'Priya Sharma',
-  },
-  {
-    email: 'worker3@truthpanel.com',
-    password: 'worker123',
-    role: 'worker',
-    name: 'Ravi Menon',
-  },
-];
+import { createClient } from '../../../utils/supabase/client';
 
 export default function Home() {
   const router = useRouter();
@@ -39,7 +12,9 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
+  const supabase = createClient();
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
@@ -47,33 +22,42 @@ export default function Home() {
       return;
     }
 
-    const user = MOCK_USERS.find(
-      (u) => u.email === email.trim().toLowerCase() && u.password === password.trim(),
-    );
+    setError('');
+    setIsSubmitting(true);
 
-    if (!user) {
-      setError('Invalid email or password.');
+    // Call Supabase native auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: password.trim()
+    });
+
+    if (authError || !authData.user) {
+      setError(authError?.message || 'Invalid email or password.');
+      setIsSubmitting(false);
       return;
     }
 
-    setError('');
-    setIsSubmitting(true);
+    // Role assumption based on metadata (or default to worker)
+    const userRole = authData.user.user_metadata?.role || 'worker';
+    const userName = authData.user.user_metadata?.name || authData.user.email;
 
     sessionStorage.setItem(
       'truth_panel_user',
       JSON.stringify({
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        email: authData.user.email,
+        name: userName,
+        role: userRole,
       }),
     );
 
-    if (user.role === 'admin') {
-      router.push('/Frontend/AdminPanel/Dashboard');
-      return;
-    }
+    // Store token globally for backend API access wrapper
+    localStorage.setItem('supabase_token', authData.session?.access_token || '');
 
-    router.push('/Frontend/WorkerPanel/Dashboard');
+    if (userRole === 'admin') {
+      router.push('/Frontend/AdminPanel/Dashboard');
+    } else {
+      router.push('/Frontend/WorkerPanel/Dashboard');
+    }
   };
 
   return (

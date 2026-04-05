@@ -19,7 +19,9 @@ const allocatePoints = async (req, res, next) => {
             .insert([{ 
                 user_id: userId, 
                 response_id, 
-                points_earned: points 
+                task_name: 'Survey Response Bonus',
+                amount: points,
+                transaction_type: 'earn'
             }]);
 
         if (rewardError) throw rewardError;
@@ -46,13 +48,17 @@ const getUserWallet = async (req, res, next) => {
         // Fetch all point transactions
         const { data, error } = await supabase
             .from('Rewards')
-            .select('points_earned, created_at')
+            .select('amount, transaction_type, task_name, created_at')
             .eq('user_id', userId);
 
         if (error) throw error;
 
-        // Efficiently sum all points 
-        const totalPoints = data.reduce((sum, record) => sum + (record.points_earned || 0), 0);
+        // Efficiently sum all points based on transaction type
+        const totalPoints = data.reduce((sum, record) => {
+            return record.transaction_type === 'spend' 
+                ? sum - (record.amount || 0) 
+                : sum + (record.amount || 0);
+        }, 0);
 
         res.status(200).json({ 
             success: true, 

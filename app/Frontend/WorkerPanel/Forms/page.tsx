@@ -34,28 +34,6 @@ interface FormResponse {
 	answers: QuestionAnswer[];
 }
 
-const FORMS_KEY = 'truth_panel_forms';
-
-const getCurrentUser = () => {
-	try {
-		const raw = sessionStorage.getItem('truth_panel_user');
-		if (!raw) return null;
-		return JSON.parse(raw) as { email: string; name: string; role: string };
-	} catch {
-		return null;
-	}
-};
-
-const readForms = (): TruthPanelForm[] => {
-	try {
-		const raw = localStorage.getItem(FORMS_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-};
 
 export default function WorkerFormsPage() {
 	const router = useRouter();
@@ -63,19 +41,43 @@ export default function WorkerFormsPage() {
 	const [submittedFormIds, setSubmittedFormIds] = useState<string[]>([]);
 
 	useEffect(() => {
-		const user = getCurrentUser();
-		if (!user) {
-			router.push('/Frontend/Login');
-			return;
-		}
+		const user = (() => {
+			try { return JSON.parse(sessionStorage.getItem('truth_panel_user') || ''); } catch { return null; }
+		})();
+		if (!user) { router.push('/Frontend/Login'); return; }
 
-		const storedForms: TruthPanelForm[] = JSON.parse(localStorage.getItem(FORMS_KEY) || '[]');
-		setForms(Array.isArray(storedForms) ? storedForms : []);
+		const loadForms = async () => {
+			try {
+				const { fetchAllSurveys, fetchActiveSession, checkUserSubmission } = await import('../../../../utils/api');
+				const res = await fetchAllSurveys();
+				if (res?.success) {
+					const normalized = (res.data || []).map((s: any) => ({
+						id: s.id,
+						title: s.title,
+						description: s.description || '',
+						createdAt: s.created_at,
+						questions: s.Questions || [],
+					}));
+					setForms(normalized);
 
-		const userKey = `truth_panel_responses__${user.email}`;
-		const storedResponses: FormResponse[] = JSON.parse(localStorage.getItem(userKey) || '[]');
-		const submittedIds = (Array.isArray(storedResponses) ? storedResponses : []).map((r) => r.formId);
-		setSubmittedFormIds(submittedIds);
+					// Check which surveys the worker already responded to
+					const submittedIds: string[] = [];
+					for (const survey of normalized) {
+						try {
+							const sessionRes = await fetchActiveSession(survey.id);
+							if (sessionRes?.success && sessionRes.session?.id) {
+								const checkRes = await checkUserSubmission(sessionRes.session.id);
+								if (checkRes?.already_submitted) submittedIds.push(survey.id);
+							}
+						} catch { /* ignore per-survey errors */ }
+					}
+					setSubmittedFormIds(submittedIds);
+				}
+			} catch (err) {
+				console.error('Failed to load surveys', err);
+			}
+		};
+		loadForms();
 	}, [router]);
 
 	const isSubmitted = (formId: string) => submittedFormIds.includes(formId);

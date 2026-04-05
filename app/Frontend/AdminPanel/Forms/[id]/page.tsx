@@ -48,34 +48,7 @@ interface FormResponse {
 	answers: QuestionAnswer[];
 }
 
-const WORKER_EMAILS = [
-	'worker1@truthpanel.com',
-	'worker2@truthpanel.com',
-	'worker3@truthpanel.com',
-];
-
-const FORMS_KEY = 'truth_panel_forms';
 const PIE_COLORS = ['#1C69AE', '#f5c518', '#4CAF50', '#E91E63', '#9C27B0', '#FF5722'];
-
-const getAllResponses = (): FormResponse[] => {
-	const all: FormResponse[] = [];
-
-	for (const email of WORKER_EMAILS) {
-		const key = `truth_panel_responses__${email}`;
-		try {
-			const raw = localStorage.getItem(key);
-			if (!raw) continue;
-			const parsed: FormResponse[] = JSON.parse(raw);
-			if (Array.isArray(parsed)) {
-				all.push(...parsed);
-			}
-		} catch {
-			// ignore malformed storage
-		}
-	}
-
-	return all;
-};
 
 const formatSubmittedAt = (value: string) =>
 	new Intl.DateTimeFormat('en-US', {
@@ -102,19 +75,52 @@ export default function FormAnalyticsPage() {
 	useEffect(() => {
 		if (!isMounted || !formId) return;
 
-		try {
-			const storedForms: TruthPanelForm[] = JSON.parse(localStorage.getItem(FORMS_KEY) || '[]');
-			const foundForm = Array.isArray(storedForms)
-				? storedForms.find((item) => item.id === formId) ?? null
-				: null;
-			setForm(foundForm);
-
-			const allResponses = getAllResponses();
-			setResponses(allResponses.filter((response) => response.formId === formId));
-		} catch {
-			setForm(null);
-			setResponses([]);
-		}
+		const loadData = async () => {
+			try {
+				const { fetchAllSurveys, fetchSessionAnalytics } = await import('../../../../../utils/api');
+				
+				// Load Survey from backend
+				const surveysRes = await fetchAllSurveys();
+				if (surveysRes?.success) {
+					const found = (surveysRes.data || []).find((s: any) => s.id === formId);
+					if (found) {
+						setForm({
+							id: found.id,
+							title: found.title,
+							description: found.description || '',
+							createdAt: found.created_at,
+							questions: (found.Questions || []).map((q: any) => ({
+								id: q.id,
+								type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
+								questionText: q.question_text,
+								options: q.options || [],
+							})),
+						});
+					}
+				}
+				
+				// Load responses from backend using session analytics endpoint
+				const analyticsRes = await fetchSessionAnalytics(formId);
+				if (analyticsRes?.success && Array.isArray(analyticsRes.data)) {
+					// Normalize backend response to local FormResponse shape
+					const normalized: FormResponse[] = analyticsRes.data.map((r: any) => ({
+						responseId: r.id,
+						formId: formId,
+						formTitle: '',
+						submittedAt: r.submitted_at || r.created_at,
+						workerEmail: r.user_id || 'worker',
+						workerName: r.user_id || 'Worker',
+						answers: [{ questionId: r.question_id, questionText: '', answer: r.answer_value }],
+					}));
+					setResponses(normalized);
+				}
+			} catch (err) {
+				console.error('Failed to load analytics data', err);
+				setForm(null);
+				setResponses([]);
+			}
+		};
+		loadData();
 	}, [formId, isMounted]);
 
 	const getAnswersForQuestion = (questionId: string): string[] =>

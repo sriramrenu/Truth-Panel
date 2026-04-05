@@ -52,17 +52,7 @@ const getTypeLabel = (type: QuestionType) => {
 	return 'Short Text';
 };
 
-const readForms = (): TruthPanelForm[] => {
-	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		if (!Array.isArray(parsed)) return [];
-		return parsed;
-	} catch {
-		return [];
-	}
-};
+// Forms are loaded from backend API; Builder uses sessionStorage draft only
 
 export default function FormBuilderPage() {
 	const router = useRouter();

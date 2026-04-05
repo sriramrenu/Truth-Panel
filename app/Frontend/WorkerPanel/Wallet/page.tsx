@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gift,
@@ -24,21 +24,10 @@ const REWARDS_CATALOG = [
   { id: 4, title: "Extra PTO Hour", value: "+1 hr", cost: 5000, icon: PlusCircle },
 ];
 
-const MOCK_TRANSACTIONS = [
-  { id: 1, task: "Employee Satisfaction Q2", date: "Oct 12, 2023", amount: "+500", type: "earn" },
-  { id: 2, task: "Monthly Safety Quiz", date: "Oct 05, 2023", amount: "+250", type: "earn" },
-  { id: 3, task: "Referral Bonus", date: "Sep 28, 2023", amount: "+500", type: "earn" },
-  { id: 4, task: "Redeemed Coffee", date: "Sep 20, 2023", amount: "-500", type: "spend" },
-  { id: 5, task: "Process Improvement Survey", date: "Sep 15, 2023", amount: "+300", type: "earn" },
-  { id: 6, task: "Redeemed Company Swag", date: "Aug 10, 2023", amount: "-1500", type: "spend" },
-  { id: 7, task: "Onboarding Feedback", date: "Jul 25, 2023", amount: "+200", type: "earn" },
-];
-
-const EMPLOYEES = ["Arun Kumar", "Priya Sharma", "Ravi Menon", "John Doe"];
-
 export default function WalletPage() {
   const router = useRouter();
-  const [points, setPoints] = useState(1250);
+  const [points, setPoints] = useState(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [selectedReward, setSelectedReward] = useState<typeof REWARDS_CATALOG[0] | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
@@ -46,7 +35,23 @@ export default function WalletPage() {
   // Transfer state
   const [showTransferSheet, setShowTransferSheet] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
-  const [transferRecipient, setTransferRecipient] = useState(EMPLOYEES[0]);
+  const [transferRecipient, setTransferRecipient] = useState("");
+
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        const { fetchWalletHistory } = await import('../../../../utils/api');
+        const res = await fetchWalletHistory();
+        if (res?.success) {
+          setPoints(res.total_points || 0);
+          setTransactions(res.history || []);
+        }
+      } catch (err) {
+        console.error('Failed to load wallet', err);
+      }
+    };
+    loadWallet();
+  }, []);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setStatusMsg({ type, text });
@@ -192,23 +197,27 @@ export default function WalletPage() {
         </div>
         
         <motion.div layout className="divide-y divide-gray-50">
-          {(showAllTransactions ? MOCK_TRANSACTIONS : MOCK_TRANSACTIONS.slice(0, 3)).map((tx) => (
-            <motion.div 
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              key={tx.id} 
-              className="p-4 flex justify-between items-center bg-[#f4fbfa]/30"
-            >
-              <div className="flex flex-col space-y-1">
-                <span className="font-semibold text-sm text-gray-800">{tx.task}</span>
-                <span className="text-xs text-gray-400">{tx.date}</span>
-              </div>
-              <span className={`font-bold ${tx.type === 'earn' ? 'text-[#fcc12d]' : 'text-gray-500'}`}>
-                {tx.amount}
-              </span>
-            </motion.div>
-          ))}
+          {transactions.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 font-medium text-sm">No transactions yet</div>
+          ) : (
+            (showAllTransactions ? transactions : transactions.slice(0, 3)).map((tx, index) => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                key={tx.id || index} 
+                className="p-4 flex justify-between items-center bg-[#f4fbfa]/30"
+              >
+                <div className="flex flex-col space-y-1">
+                  <span className="font-semibold text-sm text-gray-800">{tx.task_name}</span>
+                  <span className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString()}</span>
+                </div>
+                <span className={`font-bold ${tx.transaction_type === 'earn' ? 'text-[#fcc12d]' : 'text-gray-500'}`}>
+                  {tx.transaction_type === 'earn' ? '+' : '-'}{tx.amount}
+                </span>
+              </motion.div>
+            ))
+          )}
         </motion.div>
       </motion.div>
 
@@ -252,9 +261,7 @@ export default function WalletPage() {
                     onChange={(e) => setTransferRecipient(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-[#1e6cb3] focus:border-[#1e6cb3] block p-3 outline-none"
                   >
-                    {EMPLOYEES.map((emp) => (
-                      <option key={emp} value={emp}>{emp}</option>
-                    ))}
+                      <option value="Colleague Example">Colleague Example</option>
                   </select>
                 </div>
 

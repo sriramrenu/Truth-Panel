@@ -22,41 +22,45 @@ interface TruthPanelForm {
   questions: FormQuestion[];
 }
 
-const STORAGE_KEY = 'truth_panel_forms';
-
-const readForms = (): TruthPanelForm[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
-  }
-};
 
 export default function FormCreation() {
   const router = useRouter();
   const [forms, setForms] = useState<TruthPanelForm[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<TruthPanelForm | null>(null);
 
-  const handleDelete = () => {
-    if (!deleteTarget) return;
-    const updated = forms.filter((f) => f.id !== deleteTarget.id);
-    localStorage.setItem('truth_panel_forms', JSON.stringify(updated));
-    setForms(updated);
+  const handleDelete = async (id: string) => {
+    // Optimistic UI update
+    setForms((prev) => prev.filter((f) => f.id !== id));
     setDeleteTarget(null);
+    // TODO: Add DELETE /api/surveys/:id endpoint when needed
   };
 
   useEffect(() => {
-    // Always clear any leftover draft when landing on this page
-    // This guarantees "Get Started" always opens a blank builder
-    sessionStorage.removeItem("truth_panel_draft");
-  }, []);
-
-  useEffect(() => {
-    setForms(readForms());
+    sessionStorage.removeItem('truth_panel_draft');
+    // Fetch live surveys from Express API
+    const loadForms = async () => {
+      try {
+        const { fetchAllSurveys } = await import('../../../../utils/api');
+        const res = await fetchAllSurveys();
+        if (res?.success) {
+          setForms((res.data || []).map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            description: s.description || '',
+            createdAt: s.created_at,
+            questions: (s.Questions || []).map((q: any) => ({
+              id: q.id,
+              type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
+              questionText: q.question_text,
+              options: q.options || [],
+            })),
+          })));
+        }
+      } catch (err) {
+        console.error('Failed to load forms', err);
+      }
+    };
+    loadForms();
   }, []);
 
   return (
@@ -136,7 +140,7 @@ export default function FormCreation() {
               </button>
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => deleteTarget && handleDelete(deleteTarget.id)}
                 className="rounded-lg bg-red-600 px-4 py-2 font-[var(--font-inter)] text-sm text-white"
               >
                 Delete

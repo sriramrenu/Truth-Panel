@@ -43,12 +43,14 @@ CREATE TABLE public."Responses" (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. Rewards Table 
+-- 5. Rewards Table (Wallet Transactions)
 CREATE TABLE public."Rewards" (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) NOT NULL,
     response_id UUID REFERENCES public."Responses"(id) ON DELETE CASCADE,
-    points_earned INTEGER DEFAULT 0 NOT NULL,
+    task_name TEXT NOT NULL, -- e.g., 'Employee Satisfaction Q2'
+    amount INTEGER NOT NULL, -- Points earned or spent
+    transaction_type TEXT DEFAULT 'earn' NOT NULL, -- 'earn', 'spend'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -34,28 +34,7 @@ interface FormResponse {
 	answers: QuestionAnswer[];
 }
 
-const FORMS_KEY = 'truth_panel_forms';
-
-const getCurrentUser = () => {
-	try {
-		const raw = sessionStorage.getItem('truth_panel_user');
-		if (!raw) return null;
-		return JSON.parse(raw) as { email: string; name: string; role: string };
-	} catch {
-		return null;
-	}
-};
-
-const readForms = (): TruthPanelForm[] => {
-	try {
-		const raw = localStorage.getItem(FORMS_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed : [];
-	} catch {
-		return [];
-	}
-};
+const FORMS_KEY = 'truth_panel_forms'; // Legacy fallback only
 
 export default function AttendFormPage() {
 	const router = useRouter();
@@ -63,13 +42,55 @@ export default function AttendFormPage() {
 	const formId = searchParams.get('id');
 
 	const [form, setForm] = useState<TruthPanelForm | null>(null);
+	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 	const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
-		const forms = readForms();
-		const targetForm = forms.find((item) => item.id === formId) ?? null;
-		setForm(targetForm);
+		if (!formId) return;
+		
+		const loadSurvey = async () => {
+			try {
+				const { fetchAllSurveys, fetchActiveSession } = await import('../../../../../utils/api');
+				
+				// Fetch the survey details from backend
+				const surveysRes = await fetchAllSurveys();
+				if (surveysRes?.success) {
+					const found = surveysRes.data?.find((s: any) => s.id === formId);
+					if (found) {
+						// Normalize backend Questions structure to local shape
+						setForm({
+							id: found.id,
+							title: found.title,
+							description: found.description || '',
+							createdAt: found.created_at,
+							questions: (found.Questions || []).map((q: any) => ({
+								id: q.id,
+								type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
+								questionText: q.question_text,
+								options: q.options || [],
+							})),
+						});
+					}
+				}
+				
+				// Auto-resolve the active live session for this survey
+				const sessionRes = await fetchActiveSession(formId);
+				if (sessionRes?.success && sessionRes.session?.id) {
+					setSessionId(sessionRes.session.id);
+
+					// Check if this worker already submitted for this session
+					const { checkUserSubmission } = await import('../../../../../utils/api');
+					const checkRes = await checkUserSubmission(sessionRes.session.id);
+					if (checkRes?.already_submitted) setAlreadySubmitted(true);
+				}
+			} catch (err) {
+				console.error('Failed to load survey', err);
+			}
+		};
+		loadSurvey();
 	}, [formId]);
 
 	const currentQuestion = form?.questions[currentQuestionIndex];
@@ -113,30 +134,54 @@ export default function AttendFormPage() {
 		setAnswers((prev) => ({ ...prev, [questionId]: value }));
 	};
 
-	const handleSubmit = () => {
-		if (!form) return;
-		const user = getCurrentUser();
-		if (!user) return;
-
-		const response: FormResponse = {
-			responseId: Date.now().toString(),
-			formId: form.id,
-			formTitle: form.title,
-			submittedAt: new Date().toISOString(),
-			workerEmail: user.email,
-			workerName: user.name,
-			answers: form.questions.map((question) => ({
-				questionId: question.id,
-				questionText: question.questionText,
-				answer: answers[question.id] ?? '',
-			})),
-		};
-
-		const userKey = `truth_panel_responses__${user.email}`;
-		const existing: FormResponse[] = JSON.parse(localStorage.getItem(userKey) || '[]');
-		localStorage.setItem(userKey, JSON.stringify([...(Array.isArray(existing) ? existing : []), response]));
-		router.replace('/Frontend/WorkerPanel/Forms/Success');
+	const handleSubmit = async () => {
+		if (!form || !sessionId) {
+			console.error('Missing form or active session - cannot submit');
+			return;
+		}
+		
+		setIsSubmitting(true);
+		try {
+			const { submitUserResponse } = await import('../../../../../utils/api');
+			
+			// Submit each answer to the backend individually
+			for (const question of form.questions) {
+				const rawAnswer = answers[question.id];
+				const answerValue = Array.isArray(rawAnswer) 
+					? rawAnswer.join(', ') 
+					: (rawAnswer || '');
+				await submitUserResponse(sessionId, question.id, answerValue);
+			}
+			router.replace('/Frontend/WorkerPanel/Forms/Success');
+		} catch (err) {
+			console.error('Failed to submit responses', err);
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
+
+	if (alreadySubmitted) {
+		return (
+			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
+				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-5 text-center">
+					<div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--PBlue)]">
+						<span className="text-4xl text-white">✓</span>
+					</div>
+					<p className="font-[var(--font-poppins)] text-xl font-medium">Already Submitted</p>
+					<p className="mt-2 font-[var(--font-inter)] text-sm text-[var(--OffBlack)]/60">
+						You have already responded to this form. Each form can only be submitted once.
+					</p>
+					<button
+						type="button"
+						onClick={() => router.replace('/Frontend/WorkerPanel/Forms')}
+						className="mt-6 rounded-xl bg-[var(--PBlue)] px-6 py-3 font-[var(--font-poppins)] text-sm text-white"
+					>
+						Back to Forms
+					</button>
+				</div>
+			</main>
+		);
+	}
 
 	if (!form || !currentQuestion) {
 		return (

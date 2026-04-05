@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "../../Components/Navbar";
@@ -7,6 +7,43 @@ import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
   const router = useRouter();
+  const [points, setPoints] = useState(0);
+  const [surveys, setSurveys] = useState<any[]>([]);
+  const [pendingFormsCount, setPendingFormsCount] = useState(0);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const { fetchWalletHistory, fetchAllSurveys, fetchActiveSession, checkUserSubmission } = await import('../../../../utils/api');
+        const walletRes = await fetchWalletHistory();
+        if (walletRes?.success) setPoints(walletRes.total_points || 0);
+        
+        const surveysRes = await fetchAllSurveys();
+        if (surveysRes?.success) {
+          const allSurveys = surveysRes.data || [];
+          setSurveys(allSurveys);
+
+          // Count surveys the worker hasn't yet submitted
+          let pending = 0;
+          for (const s of allSurveys) {
+            try {
+              const sessionRes = await fetchActiveSession(s.id);
+              if (sessionRes?.success && sessionRes.session?.id) {
+                const checkRes = await checkUserSubmission(sessionRes.session.id);
+                if (!checkRes?.already_submitted) pending++;
+              } else {
+                pending++; // No active session yet — counts as pending
+              }
+            } catch { pending++; }
+          }
+          setPendingFormsCount(pending);
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard', err);
+      }
+    };
+    loadDashboard();
+  }, []);
 
   return (
     <div className="flex flex-col space-y-6 pt-4">
@@ -21,7 +58,7 @@ export default function Dashboard() {
           className="bg-white rounded-xl shadow-sm p-4 border border-gray-50 flex flex-col items-center justify-center"
         >
           <span className="text-xs text-[#1e6cb3] font-semibold">Wallet Points</span>
-          <span className="text-3xl font-bold text-gray-800 mt-2">1,250</span>
+          <span className="text-3xl font-bold text-gray-800 mt-2">{points.toLocaleString()}</span>
         </motion.div>
 
         <motion.div
@@ -31,7 +68,7 @@ export default function Dashboard() {
           className="bg-white rounded-xl shadow-sm p-4 border border-gray-50 flex flex-col items-center justify-center"
         >
           <span className="text-xs text-[#1e6cb3] font-semibold">Pending Forms</span>
-          <span className="text-3xl font-bold text-gray-800 mt-2">3</span>
+          <span className="text-3xl font-bold text-gray-800 mt-2">{pendingFormsCount}</span>
         </motion.div>
       </div>
 
@@ -86,7 +123,7 @@ export default function Dashboard() {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-[10px] text-gray-500 font-medium">Completion</span>
-              <span className="text-4xl font-bold text-gray-800">70%</span>
+              <span className="text-4xl font-bold text-gray-800">0%</span>
               <span className="text-[9px] text-gray-400 mt-1">Success rate</span>
             </div>
           </div>
@@ -95,11 +132,11 @@ export default function Dashboard() {
         <div className="flex justify-center items-center space-x-6 text-sm">
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-[#1e6cb3]"></span>
-            <span className="text-gray-600 font-medium">Completed 70%</span>
+            <span className="text-gray-600 font-medium">Completed 0%</span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-[#fcc12d]"></span>
-            <span className="text-gray-600 font-medium">Pending 30%</span>
+            <span className="text-gray-600 font-medium">Pending 100%</span>
           </div>
         </div>
       </motion.div>
@@ -114,21 +151,21 @@ export default function Dashboard() {
         <h2 className="font-semibold text-gray-800 mb-4">Available Surveys</h2>
 
         <div className="space-y-3">
-          {[
-            { title: "Employee Satisfaction Q3", reward: "500 pts", time: "10 mins" },
-            { title: "Cafeteria Feedback", reward: "250 pts", time: "5 mins" },
-            { title: "Company Event Poll", reward: "150 pts", time: "3 mins" },
-          ].map((survey, i) => (
-            <div key={i} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer bg-[#f4fbfa]/30">
-              <div className="flex flex-col">
-                <span className="font-semibold text-gray-800">{survey.title}</span>
-                <span className="text-xs text-gray-500 mt-1">{survey.time} • +{survey.reward}</span>
+          {surveys.length === 0 ? (
+            <div className="p-4 text-center text-gray-500 font-medium text-sm">No pending surveys.</div>
+          ) : (
+            surveys.map((survey: any) => (
+              <div key={survey.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer bg-[#f4fbfa]/30">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-gray-800">{survey.title}</span>
+                  <span className="text-xs text-gray-500 mt-1">{"Live Event"}</span>
+                </div>
+                <Link href={`/Frontend/WorkerPanel/Forms/Attend?id=${survey.id}`} className="px-4 py-1.5 border border-[#1e6cb3] text-[#1e6cb3] rounded-md text-sm font-medium hover:bg-[#1e6cb3] hover:text-white transition-colors block text-center">
+                  Start
+                </Link>
               </div>
-              <Link href={`/surveys/${i + 1}`} className="px-4 py-1.5 border border-[#1e6cb3] text-[#1e6cb3] rounded-md text-sm font-medium hover:bg-[#1e6cb3] hover:text-white transition-colors block text-center">
-                Start
-              </Link>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </motion.div>
 

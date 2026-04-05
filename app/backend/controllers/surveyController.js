@@ -22,8 +22,8 @@ const createSurvey = async (req, res, next) => {
         if (questions.length > 0) {
             const formattedQuestions = questions.map(q => ({
                 survey_id: surveyData.id,
-                question_text: q.question_text,
-                question_type: q.question_type || 'MCQ',
+                question_text: q.questionText || q.question_text,
+                question_type: q.type || q.question_type || 'MCQ',
                 options: q.options || [] // Expecting JSON array for MCQ choices
             }));
 
@@ -83,8 +83,29 @@ const createSession = async (req, res, next) => {
     }
 };
 
+// Fetch the currently active Session for a given Survey (for Workers)
+const getActiveSession = async (req, res, next) => {
+    try {
+        const { survey_id } = req.params;
+        const { data, error } = await supabase
+            .from('Sessions')
+            .select('*')
+            .eq('survey_id', survey_id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error) throw error;
+        res.status(200).json({ success: true, session: data });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createSurvey,
     getAllSurveys,
-    createSession
+    createSession,
+    getActiveSession
 };

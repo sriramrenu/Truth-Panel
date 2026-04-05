@@ -222,33 +222,41 @@ export default function FormPreviewPage() {
 
 					<button
 						type="button"
-						onClick={() => {
+						onClick={async () => {
 							try {
 								const draft = sessionStorage.getItem('truth_panel_draft');
 								if (draft) {
 									const parsed = JSON.parse(draft);
-									const newForm: TruthPanelForm = {
-										id: parsed.id,
-										title: parsed.title,
-										description: parsed.description,
-										createdAt: new Date().toISOString(),
-										questions: parsed.questions,
-									};
-									const existing: TruthPanelForm[] = JSON.parse(
-										localStorage.getItem('truth_panel_forms') || '[]'
+									
+									// 1. Dynamically import our API utilities
+									const { createSurvey, startLiveSession } = await import('../../../../../utils/api');
+									
+									// 2. Hit the Express Backend to insert the Survey into Postgres
+									const surveyRes = await createSurvey(
+										parsed.title || 'Untitled', 
+										parsed.description || '', 
+										parsed.questions
 									);
-									// Avoid duplicates — replace if same id exists
-									const alreadyExists = existing.some((f) => f.id === newForm.id);
-									const updated = alreadyExists
-										? existing.map((f) => (f.id === newForm.id ? newForm : f))
-										: [...existing, newForm];
-									localStorage.setItem('truth_panel_forms', JSON.stringify(updated));
-									sessionStorage.removeItem('truth_panel_draft');
+									
+									
+									if (surveyRes.success && surveyRes.survey) {
+										// 3. Immediately tell the backend to generate a 4-digit PIN session!
+										const sessionRes = await startLiveSession(surveyRes.survey.id);
+										
+										if (sessionRes?.success && sessionRes.session?.pin_code) {
+											alert(`Survey Created Successfully!\n\nYour Live Session PIN is: ${sessionRes.session.pin_code}\n\nShare this PIN with your employees so they can join!`);
+										}
+
+										// Clean up local drafting
+										sessionStorage.removeItem('truth_panel_draft');
+									} else {
+										console.error("Survey creation failed on backend", surveyRes.error);
+									}
 								}
-							} catch {
-								// fail silently
+							} catch (e) {
+								console.error("Error during API request:", e);
 							}
-							router.replace('/Frontend/AdminPanel/FormCreation');
+							router.replace('/Frontend/AdminPanel/Dashboard');
 						}}
 						className="w-full rounded-xl bg-[var(--PBlue)] px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-white"
 					>

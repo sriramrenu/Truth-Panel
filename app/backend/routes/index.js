@@ -14,5 +14,7 @@ router.use('/auth', authRoutes);
 router.use('/surveys', surveyRoutes);
 router.use('/responses', responseRoutes);
 router.use('/rewards', rewardRoutes);
-router.use('/analytics', analyticsRoutes);
-router.use('/reports', reportRoutes);
+// router.use('/analytics', analyticsRoutes);
+// router.use('/reports', reportRoutes);
+
+module.exports = router;

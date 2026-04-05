@@ -62,7 +62,33 @@ const getSessionResponses = async (req, res, next) => {
     }
 };
 
+// Check if the current user has already submitted to a specific session
+const checkUserSubmission = async (req, res, next) => {
+    try {
+        const { sessionId } = req.params;
+        const userId = req.user?.id;
+
+        if (!sessionId || !userId) {
+            return res.status(400).json({ success: false, message: 'session_id and auth token required' });
+        }
+
+        const { data, error } = await supabase
+            .from('Responses')
+            .select('id')
+            .eq('session_id', sessionId)
+            .eq('user_id', userId)
+            .limit(1);
+
+        if (error) throw error;
+
+        res.status(200).json({ success: true, already_submitted: data.length > 0 });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     submitResponse,
-    getSessionResponses
+    getSessionResponses,
+    checkUserSubmission
 };

@@ -36,33 +36,6 @@ interface FormResponse {
   answers: QuestionAnswer[];
 }
 
-const WORKER_EMAILS = [
-  'worker1@truthpanel.com',
-  'worker2@truthpanel.com',
-  'worker3@truthpanel.com',
-];
-
-const FORMS_KEY = 'truth_panel_forms';
-
-const getAllResponses = (): FormResponse[] => {
-  const all: FormResponse[] = [];
-
-  for (const email of WORKER_EMAILS) {
-    const key = `truth_panel_responses__${email}`;
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      const parsed: FormResponse[] = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        all.push(...parsed);
-      }
-    } catch {
-      // ignore malformed storage
-    }
-  }
-
-  return all;
-};
 
 export default function Forms() {
   const router = useRouter();
@@ -72,28 +45,30 @@ export default function Forms() {
 
   useEffect(() => {
     setIsMounted(true);
+    const loadForms = async () => {
+      try {
+        const { fetchAllSurveys } = await import('../../../../utils/api');
+        const res = await fetchAllSurveys();
+        if (res?.success) {
+          const normalized = (res.data || []).map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            description: s.description || '',
+            createdAt: s.created_at,
+            questions: (s.Questions || []),
+          }));
+          setForms(normalized);
+          // Response counts are now tracked server-side via responses table
+          const counts: Record<string, number> = {};
+          normalized.forEach((f: any) => { counts[f.id] = 0; });
+          setResponseCounts(counts);
+        }
+      } catch (err) {
+        console.error('Failed to load forms', err);
+      }
+    };
+    loadForms();
   }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
-    try {
-      const storedForms: TruthPanelForm[] = JSON.parse(localStorage.getItem(FORMS_KEY) || '[]');
-      const safeForms = Array.isArray(storedForms) ? storedForms : [];
-      setForms(safeForms);
-
-      const allResponses = getAllResponses();
-      const counts = safeForms.reduce<Record<string, number>>((accumulator, form) => {
-        accumulator[form.id] = allResponses.filter((response) => response.formId === form.id).length;
-        return accumulator;
-      }, {});
-
-      setResponseCounts(counts);
-    } catch {
-      setForms([]);
-      setResponseCounts({});
-    }
-  }, [isMounted]);
 
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">

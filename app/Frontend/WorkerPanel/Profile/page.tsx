@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Lock } from 'lucide-react';
 import Downbar from '../../Components/Downbar';
 import Navbar from '../../Components/Navbar';
 
@@ -68,10 +69,38 @@ export default function Profile() {
             </div>
           </div>
 
+          {resetMessage && (
+            <div className="mt-4 rounded-xl bg-green-50 p-3 border border-green-200">
+              <p className="font-[var(--font-inter)] text-sm font-medium text-green-700 flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-xs text-white">
+                  ✓
+                </span>
+                {resetMessage}
+              </p>
+            </div>
+          )}
+
+          {resetError && (
+            <div className="mt-4 rounded-xl bg-red-50 p-3 border border-red-200">
+              <p className="font-[var(--font-inter)] text-sm font-medium text-red-700">
+                {resetError}
+              </p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => router.push('/auth/reset')}
+            className="mt-6 w-full rounded-xl border border-[var(--PBlue)] bg-white px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-[var(--PBlue)] transition hover:bg-[color:var(--PBlue)]/5 flex items-center justify-center gap-2"
+          >
+            <Lock size={18} />
+            Reset Password
+          </button>
+
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-6 w-full rounded-xl border border-red-400 bg-white px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-red-500"
+            className="mt-3 w-full rounded-xl border border-red-400 bg-white px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-red-500"
           >
             Log Out
           </button>

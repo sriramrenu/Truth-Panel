@@ -98,12 +98,21 @@ export default function Home() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1 block font-[var(--font-poppins)] text-sm font-medium text-[var(--OffBlack)]"
-              >
-                Password
-              </label>
+              <div className="mb-1 flex items-center justify-between">
+                <label
+                  htmlFor="password"
+                  className="block font-[var(--font-poppins)] text-sm font-medium text-[var(--OffBlack)]"
+                >
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/reset')}
+                  className="font-[var(--font-inter)] text-xs font-medium text-[var(--PBlue)] transition hover:text-[color:var(--PBlue)]/80 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input
                 id="password"
                 type="password"

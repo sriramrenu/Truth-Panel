@@ -11,16 +11,27 @@ export default function Profile() {
   const [user, setUser] = useState<{ email: string; name: string; role: string } | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('truth_panel_user');
-      if (!raw) {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('supabase_token');
+        if (!token) {
+           router.replace('/Frontend/Login');
+           return;
+        }
+        const resp = await fetch('http://localhost:5000/api/auth/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await resp.json();
+        if (data.success && data.user) {
+            setUser(data.user);
+        } else {
+            router.replace('/Frontend/Login');
+        }
+      } catch (err) {
         router.replace('/Frontend/Login');
-        return;
       }
-      setUser(JSON.parse(raw));
-    } catch {
-      router.replace('/Frontend/Login');
-    }
+    };
+    fetchProfile();
   }, [router]);
 
   const handleLogout = () => {
@@ -69,24 +80,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {resetMessage && (
-            <div className="mt-4 rounded-xl bg-green-50 p-3 border border-green-200">
-              <p className="font-[var(--font-inter)] text-sm font-medium text-green-700 flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-xs text-white">
-                  ✓
-                </span>
-                {resetMessage}
-              </p>
-            </div>
-          )}
 
-          {resetError && (
-            <div className="mt-4 rounded-xl bg-red-50 p-3 border border-red-200">
-              <p className="font-[var(--font-inter)] text-sm font-medium text-red-700">
-                {resetError}
-              </p>
-            </div>
-          )}
 
           <button
             type="button"

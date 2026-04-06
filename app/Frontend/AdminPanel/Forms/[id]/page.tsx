@@ -77,7 +77,7 @@ export default function FormAnalyticsPage() {
 
 		const loadData = async () => {
 			try {
-				const { fetchAllSurveys, fetchSessionAnalytics } = await import('../../../../../utils/api');
+				const { fetchAllSurveys, fetchSurveyAnalytics } = await import('../../../../../utils/api');
 				
 				// Load Survey from backend
 				const surveysRes = await fetchAllSurveys();
@@ -99,20 +99,32 @@ export default function FormAnalyticsPage() {
 					}
 				}
 				
-				// Load responses from backend using session analytics endpoint
-				const analyticsRes = await fetchSessionAnalytics(formId);
+				// Load aggregated responses spanning sessions from backend 
+				const analyticsRes = await fetchSurveyAnalytics(formId);
 				if (analyticsRes?.success && Array.isArray(analyticsRes.data)) {
-					// Normalize backend response to local FormResponse shape
-					const normalized: FormResponse[] = analyticsRes.data.map((r: any) => ({
-						responseId: r.id,
-						formId: formId,
-						formTitle: '',
-						submittedAt: r.submitted_at || r.created_at,
-						workerEmail: r.user_id || 'worker',
-						workerName: r.user_id || 'Worker',
-						answers: [{ questionId: r.question_id, questionText: '', answer: r.answer_value }],
-					}));
-					setResponses(normalized);
+                    const groupedResponses: Record<string, FormResponse> = {};
+                    analyticsRes.data.forEach((r: any) => {
+                        const userId = r.user_id || 'worker';
+                        const wName = r.user_id ? r.user_id.split('-')[0] : 'Worker';
+                        if (!groupedResponses[userId]) {
+                           groupedResponses[userId] = {
+                               responseId: r.id || userId, 
+                               formId: formId,
+                               formTitle: '',
+                               submittedAt: r.submitted_at || r.created_at,
+                               workerEmail: userId,
+                               workerName: `Worker ${wName}`,
+                               answers: []
+                           };
+                        }
+                        groupedResponses[userId].answers.push({
+                             questionId: r.question_id,
+                             questionText: r.Questions?.question_text || '',
+                             answer: r.answer
+                        });
+                    });
+                    
+					setResponses(Object.values(groupedResponses));
 				}
 			} catch (err) {
 				console.error('Failed to load analytics data', err);
@@ -214,6 +226,9 @@ export default function FormAnalyticsPage() {
 
 								const allSelected: string[] = responses.flatMap((response) => {
 									const answer = response.answers.find((item) => item.questionId === question.id)?.answer;
+									if (typeof answer === 'string') {
+                                        return answer.split(',').map(s => s.trim());
+                                    }
 									return Array.isArray(answer) ? answer : [];
 								});
 

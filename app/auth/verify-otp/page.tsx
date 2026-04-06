@@ -68,16 +68,25 @@ export default function VerifyOTP() {
     setError('');
     setLoading(true);
 
-    // Simulate OTP verification (accept any 6-digit OTP for demo)
-    setTimeout(() => {
-      if (otp.length === 6) {
-        setStep('password');
-        setOtp('');
-      } else {
-        setError('OTP must be 6 digits.');
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid OTP. Please try again.');
       }
+
+      setStep('password');
+      setOtp('');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred verifying the OTP.');
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   const handleResetPassword = async (event: FormEvent<HTMLFormElement>) => {
@@ -106,19 +115,32 @@ export default function VerifyOTP() {
     setError('');
     setLoading(true);
 
-    // Simulate password reset
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password.');
+      }
+
       setStep('success');
       setNewPassword('');
       setConfirmPassword('');
-      setLoading(false);
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
         sessionStorage.removeItem('reset_email');
         router.push('/Frontend/Login');
       }, 3000);
-    }, 1200);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while resetting the password.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!email) {

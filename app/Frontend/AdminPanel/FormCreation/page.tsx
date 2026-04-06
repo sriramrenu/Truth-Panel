@@ -29,10 +29,19 @@ export default function FormCreation() {
   const [deleteTarget, setDeleteTarget] = useState<TruthPanelForm | null>(null);
 
   const handleDelete = async (id: string) => {
-    // Optimistic UI update
-    setForms((prev) => prev.filter((f) => f.id !== id));
-    setDeleteTarget(null);
-    // TODO: Add DELETE /api/surveys/:id endpoint when needed
+    try {
+        const { deleteSurveyAPI } = await import('../../../../utils/api');
+        const res = await deleteSurveyAPI(id);
+        if (res?.success) {
+            setForms((prev) => prev.filter((f) => f.id !== id));
+        } else {
+            alert(res?.message || 'Failed to gracefully delete from database');
+        }
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setDeleteTarget(null);
+    }
   };
 
   useEffect(() => {

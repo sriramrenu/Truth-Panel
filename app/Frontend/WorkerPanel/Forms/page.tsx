@@ -16,6 +16,7 @@ interface TruthPanelForm {
 	title: string;
 	description: string;
 	createdAt: string;
+	endTime: string | null;
 	questions: FormQuestion[];
 }
 
@@ -57,6 +58,7 @@ export default function WorkerFormsPage() {
 						title: s.title,
 						description: s.description || '',
 						createdAt: s.created_at,
+						endTime: s.end_time || null,
 						questions: s.Questions || [],
 					}));
 					setForms(normalized);
@@ -127,16 +129,17 @@ export default function WorkerFormsPage() {
 						<div className="overflow-hidden rounded-xl bg-white">
 							{forms.map((form, index) => {
 								const completed = isSubmitted(form.id);
+								const expired = form.endTime ? new Date() > new Date(form.endTime) : false;
 
 								return (
 									<button
 										key={`${form.id}-${index}`}
 										type="button"
-										disabled={completed}
+										disabled={completed || expired}
 										onClick={() => router.push(`/Frontend/WorkerPanel/Forms/Attend?id=${encodeURIComponent(form.id)}`)}
 										className={`flex w-full items-center justify-between gap-3 px-4 py-4 text-left ${
 											index !== forms.length - 1 ? 'border-b border-[color:rgba(13,22,11,0.08)]' : ''
-										} ${completed ? 'pointer-events-none opacity-60' : ''}`}
+										} ${(completed || expired) ? 'pointer-events-none opacity-60' : ''}`}
 									>
 										<div className="min-w-0">
 											<p className="truncate font-[var(--font-poppins)] text-sm font-medium text-[var(--OffBlack)]">
@@ -150,6 +153,10 @@ export default function WorkerFormsPage() {
 										{completed ? (
 											<span className="rounded-full bg-[var(--PBlue)] px-3 py-1 font-[var(--font-poppins)] text-[10px] font-medium text-[var(--OffWhite)]">
 												Completed
+											</span>
+										) : expired ? (
+											<span className="rounded-full bg-red-50 border border-red-100 px-3 py-1 font-[var(--font-poppins)] text-[10px] font-medium text-red-500">
+												Expired
 											</span>
 										) : (
 											<span className="font-[var(--font-poppins)] text-xl text-[var(--PBlue)]">›</span>

@@ -235,7 +235,10 @@ export default function FormPreviewPage() {
 									const surveyRes = await createSurvey(
 										parsed.title || 'Untitled', 
 										parsed.description || '', 
-										parsed.questions
+										parsed.questions,
+										parsed.startDateTime ? new Date(parsed.startDateTime).toISOString() : undefined,
+										parsed.endDateTime ? new Date(parsed.endDateTime).toISOString() : undefined,
+										parsed.pointsPerQuestion || 1
 									);
 									
 									

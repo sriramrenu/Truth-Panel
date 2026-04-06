@@ -10,7 +10,10 @@ CREATE TABLE public."Surveys" (
     title TEXT NOT NULL,
     description TEXT,
     created_by UUID REFERENCES auth.users(id), -- Links to Supabase Auth system
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE,
+    end_time TIMESTAMP WITH TIME ZONE,
+    points_per_question INTEGER DEFAULT 1 NOT NULL
 );
 
 -- 2. Questions Table

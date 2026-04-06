@@ -61,17 +61,29 @@ export default function WalletPage() {
     }, 3000);
   };
 
-  const handleRedeem = (reward: typeof REWARDS_CATALOG[0]) => {
+  const handleRedeem = async (reward: typeof REWARDS_CATALOG[0]) => {
     setSelectedReward(null);
     if (points >= reward.cost) {
-      setPoints(prev => prev - reward.cost);
-      showToast('success', `Successfully redeemed ${reward.title}!`);
+      try {
+        const { redeemWalletPoints, fetchWalletHistory } = await import('../../../../utils/api');
+        const res = await redeemWalletPoints(reward.title, reward.cost);
+        if (res.success) {
+           setPoints(prev => prev - reward.cost);
+           const hist = await fetchWalletHistory();
+           if (hist?.success) setTransactions(hist.history || []);
+           showToast('success', res.message);
+        } else {
+           showToast('error', res.message || 'Failed to redeem reward.');
+        }
+      } catch (err) {
+        showToast('error', 'Network error redeeming reward.');
+      }
     } else {
       showToast('error', `Not enough points for ${reward.title}.`);
     }
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     const amount = parseInt(transferAmount);
     if (isNaN(amount) || amount <= 0) {
       showToast('error', 'Please enter a valid amount.');
@@ -82,10 +94,22 @@ export default function WalletPage() {
       return;
     }
     
-    setPoints(prev => prev - amount);
-    setShowTransferSheet(false);
-    setTransferAmount("");
-    showToast('success', `Successfully transferred ${amount} pts to ${transferRecipient}!`);
+    try {
+        const { transferWalletPoints, fetchWalletHistory } = await import('../../../../utils/api');
+        const res = await transferWalletPoints(transferRecipient, amount);
+        if (res.success) {
+           setPoints(prev => prev - amount);
+           const hist = await fetchWalletHistory();
+           if (hist?.success) setTransactions(hist.history || []);
+           setShowTransferSheet(false);
+           setTransferAmount("");
+           showToast('success', res.message);
+        } else {
+           showToast('error', res.message || 'Failed to transfer points.');
+        }
+    } catch (err) {
+        showToast('error', 'Network error transferring points.');
+    }
   };
 
   return (

@@ -27,9 +27,15 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ forms: 0, employees: 0 });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [formOptions, setFormOptions] = useState<string[]>([]);
+  const [surveysRaw, setSurveysRaw] = useState<any[]>([]);
   const [selectedForm, setSelectedForm] = useState('');
   const [selectedPieData, setSelectedPieData] = useState<PieEntry[]>([{ name: 'Submitted', value: 0 }, { name: 'Pending', value: 0 }]);
   
+  const [showAddEmp, setShowAddEmp] = useState(false);
+  const [empEmail, setEmpEmail] = useState('');
+  const [empPassword, setEmpPassword] = useState('');
+  const [isCreatingEmp, setIsCreatingEmp] = useState(false);
+
   const submittedValue = selectedPieData[0]?.value ?? 0;
   const pendingValue = selectedPieData[1]?.value ?? 0;
 
@@ -37,20 +43,84 @@ export default function DashboardPage() {
     setIsMounted(true);
     const loadDashboard = async () => {
       try {
-        const { fetchAllSurveys } = await import('../../../../utils/api');
+        const { fetchAllSurveys, fetchEmployees } = await import('../../../../utils/api');
+        
+        let surveysCount = 0;
         const res = await fetchAllSurveys();
         if (res?.success) {
           const surveys = res.data || [];
-          setStats({ forms: surveys.length, employees: 0 });
+          surveysCount = surveys.length;
+          setSurveysRaw(surveys);
           setFormOptions(surveys.map((s: any) => s.title || 'Untitled'));
           if (surveys.length > 0) setSelectedForm(surveys[0].title || 'Untitled');
         }
+
+        let empsCount = 0;
+        const empRes = await fetchEmployees();
+        if (empRes?.success) {
+           setEmployees(empRes.employees.map((e: any) => ({ name: e.name, designation: e.email })));
+           empsCount = empRes.count;
+        }
+        
+        setStats({ forms: surveysCount, employees: empsCount });
+
       } catch (err) {
         console.error('Failed to load admin dashboard', err);
       }
     };
     loadDashboard();
   }, []);
+
+  useEffect(() => {
+    if (!selectedForm || surveysRaw.length === 0 || stats.employees === 0) return;
+     
+    const matchedSurvey = surveysRaw.find(s => (s.title || 'Untitled') === selectedForm);
+    if (matchedSurvey) {
+        // Calculate distinct worker submissions leveraging Supabase nested relational schema
+        const uniqueUsers = new Set();
+        (matchedSurvey.Sessions || []).forEach((session: any) => {
+            (session.Responses || []).forEach((response: any) => {
+                if (response.user_id) uniqueUsers.add(response.user_id);
+            });
+        });
+         
+        const submitted = uniqueUsers.size;
+        const totalWorkers = stats.employees;
+        
+        const submittedPercent = totalWorkers > 0 ? Math.round((submitted / totalWorkers) * 100) : 0;
+        const pendingPercent = 100 - submittedPercent;
+         
+        setSelectedPieData([
+            { name: 'Submitted', value: submittedPercent },
+            { name: 'Pending', value: pendingPercent }
+        ]);
+    }
+  }, [selectedForm, surveysRaw, stats.employees]);
+
+  const handleAddEmployee = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsCreatingEmp(true);
+      try {
+          const { createEmployee, fetchEmployees } = await import('../../../../utils/api');
+          const res = await createEmployee(empEmail, empPassword);
+          if (res.success) {
+              setShowAddEmp(false);
+              setEmpEmail('');
+              setEmpPassword('');
+              
+              const empRes = await fetchEmployees();
+              if (empRes?.success) {
+                  setEmployees(empRes.employees.map((em: any) => ({ name: em.name, designation: em.email })));
+                  setStats(prev => ({ ...prev, employees: empRes.count }));
+              }
+          } else {
+              alert(res.error || 'Failed to create employee');
+          }
+      } catch (err) {
+          alert('Error creating employee');
+      }
+      setIsCreatingEmp(false);
+  };
 
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
@@ -155,6 +225,7 @@ export default function DashboardPage() {
 
               <button
                 type="button"
+                onClick={() => setShowAddEmp(true)}
                 className="rounded-lg bg-[var(--PBlue)] px-3 py-1.5 font-[var(--font-inter)] text-[12px] font-medium text-white"
               >
                 Add Emp
@@ -167,7 +238,7 @@ export default function DashboardPage() {
               ) : (
                 employees.map((employee, index) => (
                   <article
-                    key={employee.name}
+                    key={employee.designation}
                     className={`flex items-center gap-3 px-4 py-3 ${
                       index !== employees.length - 1 ? 'border-b border-[color:var(--OffBlack)]/8' : ''
                     }`}
@@ -193,6 +264,59 @@ export default function DashboardPage() {
       </div>
       <Downbar />
 
+      {/* Add Employee Modal/Sheet */}
+      {showAddEmp && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 backdrop-blur-sm">
+          <div className="w-full rounded-t-3xl bg-white p-6 pb-12 shadow-xl border-t border-[var(--OffBlack)]/10 animate-slide-up">
+            <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-[var(--OffBlack)]/10" />
+            <h2 className="font-[var(--font-poppins)] text-lg font-medium text-[var(--OffBlack)]">Add New Employee</h2>
+            <p className="font-[var(--font-inter)] text-sm text-[var(--OffBlack)]/60 mb-6 mt-1">Provide employee email credentials. They will use this to sign into the worker portal.</p>
+            
+            <form className="space-y-4" onSubmit={handleAddEmployee}>
+                <div>
+                  <label className="font-[var(--font-inter)] text-xs font-semibold text-[var(--OffBlack)]/70 uppercase tracking-widest pl-1 mb-2 block">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={empEmail}
+                    onChange={(e) => setEmpEmail(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--OffBlack)]/10 bg-[var(--OffWhite)] px-4 py-3.5 font-[var(--font-inter)] text-sm text-[var(--OffBlack)] outline-none focus:border-[var(--PBlue)]"
+                    placeholder="worker@truthpanel.com"
+                  />
+                </div>
+                <div>
+                  <label className="font-[var(--font-inter)] text-xs font-semibold text-[var(--OffBlack)]/70 uppercase tracking-widest pl-1 mb-2 block">Initial Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={empPassword}
+                    onChange={(e) => setEmpPassword(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--OffBlack)]/10 bg-[var(--OffWhite)] px-4 py-3.5 font-[var(--font-inter)] text-sm text-[var(--OffBlack)] outline-none focus:border-[var(--PBlue)]"
+                    placeholder="Provide a secure password"
+                  />
+                </div>
+                
+                <div className="mt-8 flex items-center justify-between gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddEmp(false)}
+                      className="w-1/3 rounded-xl border border-[var(--OffBlack)]/10 bg-[var(--OffWhite)] py-3.5 font-[var(--font-poppins)] text-sm font-medium text-[var(--OffBlack)]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingEmp}
+                      className="w-2/3 rounded-xl bg-[var(--PBlue)] py-3.5 font-[var(--font-poppins)] text-sm font-medium text-white shadow-lg shadow-[var(--PBlue)]/20"
+                    >
+                      {isCreatingEmp ? 'Creating...' : 'Create Employee'}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -26,9 +26,26 @@ const submitResponse = async (req, res, next) => {
             
         if (responseError) throw responseError;
 
-        // Note: Real-time update to dashboards happens automatically if Supabase Realtime 
-        // is enabled on the 'Responses' table.
-        // We will trigger the Wallet reward points update logic from here later.
+        // Automatically drop Worker Points directly into Wallet hook
+        const { data: sessionData, error: sessErr } = await supabase
+            .from('Sessions')
+            .select('Surveys(title, points_per_question)')
+            .eq('id', session_id)
+            .single();
+
+        if (!sessErr && sessionData?.Surveys) {
+            const points = sessionData.Surveys.points_per_question || 1;
+            const surveyTitle = sessionData.Surveys.title || 'Form Submission';
+
+            // Secure backend push to explicit Wallet Rewards infrastructure
+            await supabase.from('Rewards').insert([{
+                user_id: req.user?.id,
+                response_id: responseData.id,
+                task_name: `${surveyTitle} (Q)`,
+                amount: points,
+                transaction_type: 'earn'
+            }]);
+        }
 
         res.status(201).json({ success: true, message: 'Response submitted successfully', data: responseData });
 
@@ -52,6 +69,44 @@ const getSessionResponses = async (req, res, next) => {
             .from('Responses')
             .select('*, Questions(question_text)')
             .eq('session_id', sessionId);
+
+        if (error) throw error;
+
+        res.status(200).json({ success: true, total_responses: data.length, data });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Fetch all responses belonging to all sessions of a specific survey
+const getSurveyResponses = async (req, res, next) => {
+    try {
+        const { surveyId } = req.params;
+
+        if (!surveyId) {
+            return res.status(400).json({ success: false, message: 'Survey ID parameter is required' });
+        }
+
+        // 1. Get all session IDs for this survey
+        const { data: sessions, error: sessErr } = await supabase
+            .from('Sessions')
+            .select('id')
+            .eq('survey_id', surveyId);
+
+        if (sessErr) throw sessErr;
+        
+        const sessionIds = sessions.map(s => s.id);
+
+        if (sessionIds.length === 0) {
+            return res.status(200).json({ success: true, total_responses: 0, data: [] });
+        }
+
+        // 2. Fetch responses tied to these sessions
+        const { data, error } = await supabase
+            .from('Responses')
+            .select('*, Questions(question_text)')
+            .in('session_id', sessionIds);
 
         if (error) throw error;
 
@@ -90,5 +145,6 @@ const checkUserSubmission = async (req, res, next) => {
 module.exports = {
     submitResponse,
     getSessionResponses,
-    checkUserSubmission
+    checkUserSubmission,
+    getSurveyResponses
 };

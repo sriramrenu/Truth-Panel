@@ -19,17 +19,25 @@ const getAuthHeaders = async () => {
 
 /* --- SURVEYS & SESSIONS --- */
 
-export const createSurvey = async (title: string, description: string, questions: any[]) => {
+export const createSurvey = async (title: string, description: string, questions: any[], start_time?: string, end_time?: string, points_per_question?: number) => {
     const response = await fetch(`${API_BASE_URL}/surveys`, {
         method: 'POST',
         headers: await getAuthHeaders(),
-        body: JSON.stringify({ title, description, questions })
+        body: JSON.stringify({ title, description, questions, start_time, end_time, points_per_question })
     });
     return response.json();
 };
 
 export const fetchAllSurveys = async () => {
     const response = await fetch(`${API_BASE_URL}/surveys`, {
+        headers: await getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const deleteSurveyAPI = async (surveyId: string) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}`, {
+        method: 'DELETE',
         headers: await getAuthHeaders(),
     });
     return response.json();
@@ -76,11 +84,54 @@ export const fetchSessionAnalytics = async (sessionId: string) => {
     return response.json();
 };
 
+export const fetchSurveyAnalytics = async (surveyId: string) => {
+    const response = await fetch(`${API_BASE_URL}/responses/survey/${surveyId}`, {
+        headers: await getAuthHeaders()
+    });
+    return response.json();
+};
+
 /* --- REWARDS & WALLET --- */
 
 export const fetchWalletHistory = async () => {
     const response = await fetch(`${API_BASE_URL}/rewards/wallet`, {
         headers: await getAuthHeaders()
+    });
+    return response.json();
+};
+
+export const redeemWalletPoints = async (rewardTitle: string, rewardCost: number) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/redeem`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ reward_title: rewardTitle, reward_cost: rewardCost })
+    });
+    return response.json();
+};
+
+export const transferWalletPoints = async (recipient: string, amount: number) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/transfer`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ recipient, amount })
+    });
+    return response.json();
+};
+
+/* --- ADMIN RESOURCES --- */
+
+export const fetchEmployees = async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/employees`, {
+        headers: await getAuthHeaders()
+    });
+    return response.json();
+};
+
+export const createEmployee = async (email: string, password?: string) => {
+    const response = await fetch(`${API_BASE_URL}/admin/employee`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ email, password: password || '12345678' })
     });
     return response.json();
 };

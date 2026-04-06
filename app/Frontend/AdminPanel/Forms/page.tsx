@@ -18,6 +18,7 @@ interface TruthPanelForm {
   description: string;
   createdAt: string;
   questions: FormQuestion[];
+  rawSessions?: any[];
 }
 
 interface QuestionAnswer {
@@ -56,11 +57,24 @@ export default function Forms() {
             description: s.description || '',
             createdAt: s.created_at,
             questions: (s.Questions || []),
+            rawSessions: s.Sessions || []
           }));
           setForms(normalized);
-          // Response counts are now tracked server-side via responses table
+          
           const counts: Record<string, number> = {};
-          normalized.forEach((f: any) => { counts[f.id] = 0; });
+          normalized.forEach((f: any) => { 
+                const uniqueUsers = new Set();
+                if (f.rawSessions) {
+                    f.rawSessions.forEach((sess: any) => {
+                        if (sess.Responses) {
+                            sess.Responses.forEach((r: any) => {
+                                 if (r.user_id) uniqueUsers.add(r.user_id);
+                            });
+                        }
+                    });
+                }
+                counts[f.id] = uniqueUsers.size; 
+          });
           setResponseCounts(counts);
         }
       } catch (err) {

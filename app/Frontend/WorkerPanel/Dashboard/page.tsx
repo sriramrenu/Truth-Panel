@@ -10,6 +10,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [points, setPoints] = useState(0);
   const [surveys, setSurveys] = useState<any[]>([]);
+  const [pendingSurveys, setPendingSurveys] = useState<any[]>([]);
   const [pendingFormsCount, setPendingFormsCount] = useState(0);
 
   useEffect(() => {
@@ -22,22 +23,37 @@ export default function Dashboard() {
         const surveysRes = await fetchAllSurveys();
         if (surveysRes?.success) {
           const allSurveys = surveysRes.data || [];
-          setSurveys(allSurveys);
+          // Negotiate expired surveys actively out of view
+          const activeSurveys = allSurveys.filter((s: any) => {
+              if (!s.end_time) return true;
+              return new Date() < new Date(s.end_time);
+          });
+          
+          setSurveys(activeSurveys);
 
-          // Count surveys the worker hasn't yet submitted
-          let pending = 0;
-          for (const s of allSurveys) {
+          // Count surveys the worker hasn't yet submitted (excluding expired ones)
+          let pendingCount = 0;
+          const pendingArray: any[] = [];
+          for (const s of activeSurveys) {
             try {
               const sessionRes = await fetchActiveSession(s.id);
               if (sessionRes?.success && sessionRes.session?.id) {
                 const checkRes = await checkUserSubmission(sessionRes.session.id);
-                if (!checkRes?.already_submitted) pending++;
+                if (!checkRes?.already_submitted) {
+                    pendingCount++;
+                    pendingArray.push(s);
+                }
               } else {
-                pending++; // No active session yet — counts as pending
+                pendingCount++; // Active and no session means pending
+                pendingArray.push(s);
               }
-            } catch { pending++; }
+            } catch { 
+                pendingCount++;
+                pendingArray.push(s);
+            }
           }
-          setPendingFormsCount(pending);
+          setPendingFormsCount(pendingCount);
+          setPendingSurveys(pendingArray);
         }
       } catch (err) {
         console.error('Failed to load dashboard', err);
@@ -80,7 +96,7 @@ export default function Dashboard() {
         className="bg-white rounded-xl shadow-sm p-5 border border-gray-50 relative"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="font-semibold text-gray-800">Monthly Target</h2>
+          <h2 className="font-semibold text-gray-800">Forms Status</h2>
         </div>
 
         <div className="flex justify-center mb-6 relative">
@@ -100,7 +116,7 @@ export default function Dashboard() {
                 className="text-[#1e6cb3]"
                 strokeWidth="12"
                 strokeDasharray="251.2"
-                strokeDashoffset="75.36"
+                strokeDashoffset={251.2 - (251.2 * (surveys.length > 0 ? (surveys.length - pendingFormsCount) / surveys.length : 0))}
                 strokeLinecap="round"
                 stroke="currentColor"
                 fill="transparent"
@@ -112,18 +128,20 @@ export default function Dashboard() {
                 className="text-[#fcc12d]"
                 strokeWidth="12"
                 strokeDasharray="251.2"
-                strokeDashoffset="175.84"
+                strokeDashoffset={251.2 - (251.2 * (surveys.length > 0 ? pendingFormsCount / surveys.length : 1))}
                 stroke="currentColor"
                 fill="transparent"
                 r="40"
                 cx="50"
                 cy="50"
-                style={{ transform: "rotate(252deg)", transformOrigin: "center" }}
+                style={{ transform: `rotate(${(surveys.length > 0 ? (surveys.length - pendingFormsCount) / surveys.length : 0) * 360}deg)`, transformOrigin: "center" }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-[10px] text-gray-500 font-medium">Completion</span>
-              <span className="text-4xl font-bold text-gray-800">0%</span>
+              <span className="text-4xl font-bold text-gray-800">
+                  {surveys.length > 0 ? Math.round(((surveys.length - pendingFormsCount) / surveys.length) * 100) : 0}%
+              </span>
               <span className="text-[9px] text-gray-400 mt-1">Success rate</span>
             </div>
           </div>
@@ -132,11 +150,15 @@ export default function Dashboard() {
         <div className="flex justify-center items-center space-x-6 text-sm">
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-[#1e6cb3]"></span>
-            <span className="text-gray-600 font-medium">Completed 0%</span>
+            <span className="text-gray-600 font-medium">
+                Completed {surveys.length > 0 ? Math.round(((surveys.length - pendingFormsCount) / surveys.length) * 100) : 0}%
+            </span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-[#fcc12d]"></span>
-            <span className="text-gray-600 font-medium">Pending 100%</span>
+            <span className="text-gray-600 font-medium">
+                Pending {surveys.length > 0 ? Math.round((pendingFormsCount / surveys.length) * 100) : 0}%
+            </span>
           </div>
         </div>
       </motion.div>
@@ -151,10 +173,10 @@ export default function Dashboard() {
         <h2 className="font-semibold text-gray-800 mb-4">Available Surveys</h2>
 
         <div className="space-y-3">
-          {surveys.length === 0 ? (
+          {pendingSurveys.length === 0 ? (
             <div className="p-4 text-center text-gray-500 font-medium text-sm">No pending surveys.</div>
           ) : (
-            surveys.map((survey: any) => (
+            pendingSurveys.map((survey: any) => (
               <div key={survey.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer bg-[#f4fbfa]/30">
                 <div className="flex flex-col">
                   <span className="font-semibold text-gray-800">{survey.title}</span>

@@ -15,6 +15,7 @@ interface TruthPanelForm {
 	title: string;
 	description: string;
 	createdAt: string;
+	endTime?: string;
 	questions: FormQuestion[];
 }
 
@@ -44,9 +45,11 @@ export default function AttendFormPage() {
 	const [form, setForm] = useState<TruthPanelForm | null>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+	const [isExpired, setIsExpired] = useState(false);
 	const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!formId) return;
@@ -66,6 +69,7 @@ export default function AttendFormPage() {
 							title: found.title,
 							description: found.description || '',
 							createdAt: found.created_at,
+							endTime: found.end_time || undefined,
 							questions: (found.Questions || []).map((q: any) => ({
 								id: q.id,
 								type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
@@ -85,6 +89,8 @@ export default function AttendFormPage() {
 					const { checkUserSubmission } = await import('../../../../../utils/api');
 					const checkRes = await checkUserSubmission(sessionRes.session.id);
 					if (checkRes?.already_submitted) setAlreadySubmitted(true);
+				} else if (sessionRes?.message === 'Survey session has expired') {
+					setIsExpired(true);
 				}
 			} catch (err) {
 				console.error('Failed to load survey', err);
@@ -92,6 +98,29 @@ export default function AttendFormPage() {
 		};
 		loadSurvey();
 	}, [formId]);
+
+	useEffect(() => {
+		if (!form?.endTime || isExpired || alreadySubmitted) return;
+
+		const end = new Date(form.endTime).getTime();
+		
+		const tick = () => {
+			const now = Date.now();
+			if (now >= end) {
+				setIsExpired(true);
+				setTimeLeft('00:00');
+				return;
+			}
+			const diff = end - now;
+			const minutes = Math.floor(diff / 60000);
+			const seconds = Math.floor((diff % 60000) / 1000);
+			setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+		};
+
+		tick();
+		const interval = setInterval(tick, 1000);
+		return () => clearInterval(interval);
+	}, [form?.endTime, isExpired, alreadySubmitted]);
 
 	const currentQuestion = form?.questions[currentQuestionIndex];
 	const totalQuestions = form?.questions.length ?? 0;
@@ -183,6 +212,29 @@ export default function AttendFormPage() {
 		);
 	}
 
+	if (isExpired) {
+		return (
+			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
+				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-5 text-center">
+					<div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
+						<span className="text-4xl text-red-500">⏳</span>
+					</div>
+					<p className="font-[var(--font-poppins)] text-xl font-medium">Session Expired</p>
+					<p className="mt-2 font-[var(--font-inter)] text-sm text-[var(--OffBlack)]/60">
+						The time limit for this form has passed. It is no longer accepting new responses.
+					</p>
+					<button
+						type="button"
+						onClick={() => router.replace('/Frontend/WorkerPanel/Forms')}
+						className="mt-6 rounded-xl bg-[var(--PBlue)] px-6 py-3 font-[var(--font-poppins)] text-sm text-white"
+					>
+						Back to Forms
+					</button>
+				</div>
+			</main>
+		);
+	}
+
 	if (!form || !currentQuestion) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
@@ -214,6 +266,11 @@ export default function AttendFormPage() {
 							{'<'}
 						</button>
 						<h1 className="truncate font-[var(--font-poppins)] text-lg font-medium">{form.title || 'Untitled Form'}</h1>
+						{timeLeft && (
+                            <span className="ml-auto rounded-full bg-red-50 px-3 py-1 font-[var(--font-inter)] text-[11px] font-semibold text-red-600 border border-red-200 shrink-0">
+                                ⏳ {timeLeft}
+                            </span>
+                        )}
 					</div>
 
 					<div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--OffWhite)]">

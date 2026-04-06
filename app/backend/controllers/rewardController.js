@@ -71,7 +71,45 @@ const getUserWallet = async (req, res, next) => {
     }
 };
 
+// Redeem items from catalog
+const redeemReward = async (req, res, next) => {
+    try {
+        const { reward_title, reward_cost } = req.body;
+        const userId = req.user?.id;
+
+        const { error } = await supabase.from('Rewards').insert([{
+            user_id: userId,
+            task_name: `Redeemed: ${reward_title}`,
+            amount: reward_cost,
+            transaction_type: 'spend'
+        }]);
+        if (error) throw error;
+        
+        res.status(200).json({ success: true, message: `Redeemed ${reward_title}` });
+    } catch (error) { next(error); }
+};
+
+// Transfer points to a colleague
+const transferPoints = async (req, res, next) => {
+    try {
+        const { recipient, amount } = req.body;
+        const userId = req.user?.id;
+
+        const { error } = await supabase.from('Rewards').insert([{
+            user_id: userId,
+            task_name: `Transferred to ${recipient}`,
+            amount: amount,
+            transaction_type: 'spend'
+        }]);
+        if (error) throw error;
+        
+        res.status(200).json({ success: true, message: `Transferred ${amount} points` });
+    } catch (error) { next(error); }
+};
+
 module.exports = {
     allocatePoints,
-    getUserWallet
+    getUserWallet,
+    redeemReward,
+    transferPoints
 };

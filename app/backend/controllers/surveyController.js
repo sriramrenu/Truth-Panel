@@ -3,7 +3,7 @@ const supabase = require('../config/supabaseClient');
 // Create a new Survey template (Admin)
 const createSurvey = async (req, res, next) => {
     try {
-        const { title, description, questions } = req.body;
+        const { title, description, questions, start_time, end_time, points_per_question } = req.body;
         
         if (!title || !questions || !Array.isArray(questions)) {
             return res.status(400).json({ success: false, message: 'Invalid payload: title and questions array required' });
@@ -12,7 +12,14 @@ const createSurvey = async (req, res, next) => {
         // 1. Insert the Survey
         const { data: surveyData, error: surveyError } = await supabase
             .from('Surveys')
-            .insert([{ title, description, created_by: req.user?.id }])
+            .insert([{ 
+                title, 
+                description,
+                start_time: start_time || null,
+                end_time: end_time || null,
+                points_per_question: points_per_question || 1,
+                created_by: req.user?.id 
+            }])
             .select()
             .single();
             
@@ -46,7 +53,7 @@ const getAllSurveys = async (req, res, next) => {
     try {
         const { data, error } = await supabase
             .from('Surveys')
-            .select('*, Questions(*)');
+            .select('*, Questions(*), Sessions(Responses(user_id))');
 
         if (error) throw error;
 
@@ -87,6 +94,22 @@ const createSession = async (req, res, next) => {
 const getActiveSession = async (req, res, next) => {
     try {
         const { survey_id } = req.params;
+        
+        // 1. Ensure Survey hasn't expired
+        const { data: survey, error: surveyError } = await supabase
+            .from('Surveys')
+            .select('end_time')
+            .eq('id', survey_id)
+            .single();
+            
+        if (!surveyError && survey?.end_time) {
+            const now = new Date();
+            const endTime = new Date(survey.end_time);
+            if (now > endTime) {
+                return res.status(403).json({ success: false, message: 'Survey session has expired' });
+            }
+        }
+
         const { data, error } = await supabase
             .from('Sessions')
             .select('*')
@@ -103,9 +126,29 @@ const getActiveSession = async (req, res, next) => {
     }
 };
 
+// Delete a Survey template cleanly natively
+const deleteSurvey = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'Survey ID parameter is required' });
+        }
+        
+        // Native DB delete. Cascade wipes Questions automatically.
+        const { error } = await supabase.from('Surveys').delete().eq('id', id);
+
+        if (error) throw error;
+        
+        res.status(200).json({ success: true, message: 'Survey deleted seamlessly' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createSurvey,
     getAllSurveys,
     createSession,
-    getActiveSession
+    getActiveSession,
+    deleteSurvey
 };

@@ -3,7 +3,6 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { createClient } from '../../../utils/supabase/client';
 
 export default function Home() {
   const router = useRouter();
@@ -12,7 +11,6 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supabase = createClient();
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -25,38 +23,32 @@ export default function Home() {
     setError('');
     setIsSubmitting(true);
 
-    // Call Supabase native auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password: password.trim()
-    });
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password: password.trim() })
+      });
+      const data = await response.json();
 
-    if (authError || !authData.user) {
-      setError(authError?.message || 'Invalid email or password.');
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Invalid email or password.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const user = data.user;
+      sessionStorage.setItem('truth_panel_user', JSON.stringify(user));
+      localStorage.setItem('supabase_token', data.session.access_token);
+
+      if (user.role === 'admin') {
+        router.push('/Frontend/AdminPanel/Dashboard');
+      } else {
+        router.push('/Frontend/WorkerPanel/Dashboard');
+      }
+    } catch (err) {
+      setError('Failed to connect to the authentication service.');
       setIsSubmitting(false);
-      return;
-    }
-
-    // Role assumption based on metadata (or default to worker)
-    const userRole = authData.user.user_metadata?.role || 'worker';
-    const userName = authData.user.user_metadata?.name || authData.user.email;
-
-    sessionStorage.setItem(
-      'truth_panel_user',
-      JSON.stringify({
-        email: authData.user.email,
-        name: userName,
-        role: userRole,
-      }),
-    );
-
-    // Store token globally for backend API access wrapper
-    localStorage.setItem('supabase_token', authData.session?.access_token || '');
-
-    if (userRole === 'admin') {
-      router.push('/Frontend/AdminPanel/Dashboard');
-    } else {
-      router.push('/Frontend/WorkerPanel/Dashboard');
     }
   };
 

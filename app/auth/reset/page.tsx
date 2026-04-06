@@ -23,15 +23,28 @@ export default function ResetPassword() {
     setMessage('');
     setLoading(true);
 
-    // Simulate OTP sending
-    setTimeout(() => {
-      setMessage('✓ OTP sent to your email! Check your inbox.');
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send OTP');
+      }
+      
+      setMessage('✓ ' + data.message);
       sessionStorage.setItem('reset_email', email.trim().toLowerCase());
       setTimeout(() => {
         router.push(`/auth/verify-otp?email=${encodeURIComponent(email.trim().toLowerCase())}`);
       }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while sending OTP.');
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (

@@ -17,6 +17,9 @@ interface TruthPanelForm {
 	id: string;
 	title: string;
 	description: string;
+	startDateTime: string;
+	endDateTime: string;
+	pointsPerQuestion: number;
 	createdAt: string;
 	questions: FormQuestion[];
 }
@@ -59,6 +62,10 @@ export default function FormBuilderPage() {
 	const [formId, setFormId] = useState(createId());
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
+	const [startDateTime, setStartDateTime] = useState('');
+	const [endDateTime, setEndDateTime] = useState('');
+	const [pointsPerQuestion, setPointsPerQuestion] = useState<number>(1);
+	const [settingsCompleted, setSettingsCompleted] = useState(false);
 	const [questions, setQuestions] = useState<FormQuestion[]>([createQuestion()]);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [deleteTarget, setDeleteTarget] = useState<FormQuestion | null>(null);
@@ -69,7 +76,19 @@ export default function FormBuilderPage() {
 		if (draft) {
 			try {
 				const parsed = JSON.parse(draft);
-				// Only restore if draft has actual content
+				setStartDateTime(parsed.startDateTime || '');
+				setEndDateTime(parsed.endDateTime || '');
+				setPointsPerQuestion(parsed.pointsPerQuestion || 1);
+
+				if (
+					parsed.startDateTime &&
+					parsed.endDateTime &&
+					parsed.endDateTime > parsed.startDateTime
+				) {
+					setSettingsCompleted(true);
+				}
+
+				// Restore builder data only when questions exist
 				if (parsed.questions && parsed.questions.length > 0) {
 					setFormId(parsed.id || createId());
 					setTitle(parsed.title || '');
@@ -87,13 +106,16 @@ export default function FormBuilderPage() {
 	const canGoPrev = currentQuestionIndex > 0;
 	const canGoNext =
 		currentQuestionIndex < questions.length - 1 && isQuestionComplete(currentQuestion);
+	const canStartBuilder =
+		startDateTime !== '' && endDateTime !== '' && endDateTime > startDateTime;
 
 	const canPreview = useMemo(
 		() =>
 			title.trim().length > 0 &&
+			canStartBuilder &&
 			questions.length > 0 &&
 			questions.every((question) => question.questionText.trim().length > 0),
-		[title, questions],
+		[title, canStartBuilder, questions],
 	);
 
 	const updateCurrentQuestion = (updates: Partial<FormQuestion>) => {
@@ -174,6 +196,9 @@ export default function FormBuilderPage() {
 			id: formId,
 			title: title.trim(),
 			description: description.trim(),
+			startDateTime,
+			endDateTime,
+			pointsPerQuestion,
 			questions: questions.map(({ isEditable, ...q }) => ({
 				...q,
 				questionText: q.questionText.trim(),
@@ -204,31 +229,97 @@ export default function FormBuilderPage() {
 				</header>
 
 				<section className="space-y-5 px-4 py-5">
-					<div className="space-y-4">
-						<label className="block border-b border-[color:var(--OffBlack)]/18 pb-2">
-							<span className="sr-only">Form Title</span>
-							<input
-								type="text"
-								value={title}
-								onChange={(event) => setTitle(event.target.value)}
-								placeholder="Form Title"
-								className="w-full bg-transparent font-[var(--font-poppins)] text-base font-medium outline-none placeholder:text-[var(--OffBlack)]/40 focus:border-[var(--PBlue)]"
-							/>
-						</label>
+					{!settingsCompleted ? (
+						<section className="space-y-4 rounded-2xl border border-[color:var(--OffBlack)]/10 bg-[var(--OffWhite)] px-4 py-4">
+							<p className="font-[var(--font-poppins)] text-sm font-medium text-[var(--PBlue)]">
+								Before You Start
+							</p>
 
-						<label className="block border-b border-[color:var(--OffBlack)]/18 pb-2">
-							<span className="sr-only">Form Description</span>
-							<input
-								type="text"
-								value={description}
-								onChange={(event) => setDescription(event.target.value)}
-								placeholder="Form Description"
-								className="w-full bg-transparent font-[var(--font-inter)] text-sm font-normal outline-none placeholder:text-[var(--OffBlack)]/40"
-							/>
-						</label>
-					</div>
+							<div className="space-y-1">
+								<label className="font-[var(--font-inter)] text-xs text-[var(--OffBlack)]/60">Form Start</label>
+								<input
+									type="datetime-local"
+									value={startDateTime}
+									onChange={(e) => setStartDateTime(e.target.value)}
+									className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-2.5 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
+								/>
+							</div>
 
-					<article className="rounded-2xl border border-[color:var(--OffBlack)]/10 bg-[var(--OffWhite)] p-4 shadow-sm">
+							<div className="space-y-1">
+								<label className="font-[var(--font-inter)] text-xs text-[var(--OffBlack)]/60">Form End</label>
+								<input
+									type="datetime-local"
+									value={endDateTime}
+									onChange={(e) => setEndDateTime(e.target.value)}
+									className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-2.5 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
+								/>
+								{endDateTime !== '' && startDateTime !== '' && endDateTime <= startDateTime ? (
+									<p className="mt-1 font-[var(--font-inter)] text-xs text-red-500">
+										End time must be after start time.
+									</p>
+								) : null}
+							</div>
+
+							<div className="space-y-1">
+								<label className="font-[var(--font-inter)] text-xs text-[var(--OffBlack)]/60">Points per Question</label>
+								<div className="flex items-center gap-3">
+									<button
+										type="button"
+										onClick={() => setPointsPerQuestion((p) => Math.max(1, p - 1))}
+										className="flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--OffBlack)]/12 bg-white font-[var(--font-poppins)] text-lg text-[var(--PBlue)]"
+									>
+										-
+									</button>
+									<span className="min-w-[32px] text-center font-[var(--font-poppins)] text-base font-medium text-[var(--OffBlack)]">
+										{pointsPerQuestion}
+									</span>
+									<button
+										type="button"
+										onClick={() => setPointsPerQuestion((p) => p + 1)}
+										className="flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--OffBlack)]/12 bg-white font-[var(--font-poppins)] text-lg text-[var(--PBlue)]"
+									>
+										+
+									</button>
+									<span className="font-[var(--font-inter)] text-xs text-[var(--OffBlack)]/50">pts / question</span>
+								</div>
+							</div>
+
+							<button
+								type="button"
+								disabled={!canStartBuilder}
+								onClick={() => setSettingsCompleted(true)}
+								className="w-full rounded-xl bg-[var(--PBlue)] px-4 py-2.5 font-[var(--font-poppins)] text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
+							>
+								Continue to Builder
+							</button>
+						</section>
+					) : (
+						<>
+							<div className="space-y-4">
+								<label className="block border-b border-[color:var(--OffBlack)]/18 pb-2">
+									<span className="sr-only">Form Title</span>
+									<input
+										type="text"
+										value={title}
+										onChange={(event) => setTitle(event.target.value)}
+										placeholder="Form Title"
+										className="w-full bg-transparent font-[var(--font-poppins)] text-base font-medium outline-none placeholder:text-[var(--OffBlack)]/40 focus:border-[var(--PBlue)]"
+									/>
+								</label>
+
+								<label className="block border-b border-[color:var(--OffBlack)]/18 pb-2">
+									<span className="sr-only">Form Description</span>
+									<input
+										type="text"
+										value={description}
+										onChange={(event) => setDescription(event.target.value)}
+										placeholder="Form Description"
+										className="w-full bg-transparent font-[var(--font-inter)] text-sm font-normal outline-none placeholder:text-[var(--OffBlack)]/40"
+									/>
+								</label>
+							</div>
+
+							<article className="rounded-2xl border border-[color:var(--OffBlack)]/10 bg-[var(--OffWhite)] p-4 shadow-sm">
 						<div className="mb-3 flex items-center justify-between">
 							<p className="font-[var(--font-poppins)] text-sm font-medium text-[var(--PBlue)]">
 								Question {currentQuestionIndex + 1}
@@ -335,57 +426,63 @@ export default function FormBuilderPage() {
 								Type: {getTypeLabel(currentQuestion.type)}
 							</p>
 						</div>
-					</article>
+							</article>
+						</>
+					)}
 				</section>
 			</div>
 
-			<div className="fixed inset-x-0 bottom-30 z-30 flex justify-center px-4">
-				<button
-					type="button"
-					disabled={!canPreview}
-					onClick={persistAndGoPreview}
-					className="w-full max-w-[358px] rounded-xl bg-[var(--PBlue)] px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-white shadow-[0_10px_24px_rgba(28,105,174,0.28)] disabled:cursor-not-allowed disabled:bg-gray-400"
-				>
-					Preview Form
-				</button>
-			</div>
-
-			<nav className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
-				<div className="relative w-full max-w-[390px]">
-					<div className="flex h-20 items-end justify-between rounded-t-[24px] bg-[var(--PBlue)] px-6 pb-4 pt-4">
-						<button
-							type="button"
-							disabled={!canGoPrev}
-							onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
-							className="min-w-16 rounded-lg border border-[color:rgba(237,247,246,0.4)] px-3 py-1.5 font-[var(--font-poppins)] text-xs font-medium text-[var(--OffWhite)] disabled:cursor-not-allowed disabled:opacity-45"
-						>
-							Prev
-						</button>
-
-						<p className="pb-0.5 font-[var(--font-poppins)] text-sm font-medium text-white">
-							{currentQuestionIndex + 1} / {questions.length}
-						</p>
-
-						<button
-							type="button"
-							disabled={!canGoNext}
-							onClick={() => setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))}
-							className="min-w-16 rounded-lg border border-[color:rgba(237,247,246,0.4)] px-3 py-1.5 font-[var(--font-poppins)] text-xs font-medium text-[var(--OffWhite)] disabled:cursor-not-allowed disabled:opacity-45"
-						>
-							Next
-						</button>
-					</div>
-
+			{settingsCompleted ? (
+				<div className="fixed inset-x-0 bottom-30 z-30 flex justify-center px-4">
 					<button
 						type="button"
-						onClick={handleAddQuestion}
-						className="absolute left-1/2 top-0 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--SYellow)] shadow-[0_10px_22px_rgba(13,22,11,0.18)]"
-						aria-label="Add question"
+						disabled={!canPreview}
+						onClick={persistAndGoPreview}
+						className="w-full max-w-[358px] rounded-xl bg-[var(--PBlue)] px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-white shadow-[0_10px_24px_rgba(28,105,174,0.28)] disabled:cursor-not-allowed disabled:bg-gray-400"
 					>
-						<span className="text-4xl leading-none text-white">+</span>
+						Preview Form
 					</button>
 				</div>
-			</nav>
+			) : null}
+
+			{settingsCompleted ? (
+				<nav className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
+					<div className="relative w-full max-w-[390px]">
+						<div className="flex h-20 items-end justify-between rounded-t-[24px] bg-[var(--PBlue)] px-6 pb-4 pt-4">
+							<button
+								type="button"
+								disabled={!canGoPrev}
+								onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
+								className="min-w-16 rounded-lg border border-[color:rgba(237,247,246,0.4)] px-3 py-1.5 font-[var(--font-poppins)] text-xs font-medium text-[var(--OffWhite)] disabled:cursor-not-allowed disabled:opacity-45"
+							>
+								Prev
+							</button>
+
+							<p className="pb-0.5 font-[var(--font-poppins)] text-sm font-medium text-white">
+								{currentQuestionIndex + 1} / {questions.length}
+							</p>
+
+							<button
+								type="button"
+								disabled={!canGoNext}
+								onClick={() => setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+								className="min-w-16 rounded-lg border border-[color:rgba(237,247,246,0.4)] px-3 py-1.5 font-[var(--font-poppins)] text-xs font-medium text-[var(--OffWhite)] disabled:cursor-not-allowed disabled:opacity-45"
+							>
+								Next
+							</button>
+						</div>
+
+						<button
+							type="button"
+							onClick={handleAddQuestion}
+							className="absolute left-1/2 top-0 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--SYellow)] shadow-[0_10px_22px_rgba(13,22,11,0.18)]"
+							aria-label="Add question"
+						>
+							<span className="text-4xl leading-none text-white">+</span>
+						</button>
+					</div>
+				</nav>
+			) : null}
 
 			{deleteTarget ? (
 				<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 px-5">

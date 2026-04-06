@@ -148,10 +148,17 @@ export default function DashboardPage() {
           </section>
 
           <section className="rounded-2xl bg-white shadow-sm">
-            <div className="border-b border-[color:var(--OffBlack)]/8 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-[color:var(--OffBlack)]/8 px-4 py-3">
               <h2 className="font-[var(--font-poppins)] text-[15px] font-medium text-[var(--OffBlack)]">
                 Employees
               </h2>
+
+              <button
+                type="button"
+                className="rounded-lg bg-[var(--PBlue)] px-3 py-1.5 font-[var(--font-inter)] text-[12px] font-medium text-white"
+              >
+                Add Emp
+              </button>
             </div>
 
             <div className="max-h-[220px] overflow-y-auto">

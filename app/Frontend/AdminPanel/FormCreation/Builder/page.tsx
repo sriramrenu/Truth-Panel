@@ -478,7 +478,7 @@ export default function FormBuilderPage() {
 							className="absolute left-1/2 top-0 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--SYellow)] shadow-[0_10px_22px_rgba(13,22,11,0.18)]"
 							aria-label="Add question"
 						>
-							<span className="text-4xl leading-none text-white">+</span>
+							<span className="text-4xl mb-2 leading-none text-white">+</span>
 						</button>
 					</div>
 				</nav>

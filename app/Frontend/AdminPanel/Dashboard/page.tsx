@@ -16,6 +16,16 @@ type Employee = {
   designation: string;
 };
 
+const DEFAULT_EMPLOYEES_PER_PAGE = 10;
+
+const getCountFontClass = (value: number) => {
+  const digits = String(Math.abs(value)).length;
+
+  if (digits >= 7) return 'text-xl';
+  if (digits >= 5) return 'text-2xl';
+  return 'text-3xl';
+};
+
   const getInitials = (name: string) => {
     if (!name) return 'U';
     return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -26,6 +36,8 @@ export default function DashboardPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [stats, setStats] = useState({ forms: 0, employees: 0 });
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeePage, setEmployeePage] = useState(1);
+  const [employeesPerPage, setEmployeesPerPage] = useState(DEFAULT_EMPLOYEES_PER_PAGE);
   const [formOptions, setFormOptions] = useState<string[]>([]);
   const [surveysRaw, setSurveysRaw] = useState<any[]>([]);
   const [selectedForm, setSelectedForm] = useState('');
@@ -38,6 +50,19 @@ export default function DashboardPage() {
 
   const submittedValue = selectedPieData[0]?.value ?? 0;
   const pendingValue = selectedPieData[1]?.value ?? 0;
+  const totalEmployeePages = Math.max(1, Math.ceil(employees.length / employeesPerPage));
+  const employeeStartIndex = (employeePage - 1) * employeesPerPage;
+  const paginatedEmployees = employees.slice(employeeStartIndex, employeeStartIndex + employeesPerPage);
+
+  useEffect(() => {
+    if (employeePage > totalEmployeePages) {
+      setEmployeePage(totalEmployeePages);
+    }
+  }, [employeePage, totalEmployeePages]);
+
+  useEffect(() => {
+    setEmployeePage(1);
+  }, [employeesPerPage]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -133,7 +158,9 @@ export default function DashboardPage() {
               <p className="font-[var(--font-poppins)] text-[12px] font-medium text-[var(--PBlue)]">
                 No. of Forms
               </p>
-              <p className="mt-3 font-[var(--font-inter)] text-3xl font-bold text-[var(--OffBlack)]">
+              <p
+                className={`mt-3 font-[var(--font-inter)] ${getCountFontClass(stats.forms)} font-bold text-[var(--OffBlack)]`}
+              >
                 {stats.forms}
               </p>
             </article>
@@ -142,7 +169,9 @@ export default function DashboardPage() {
               <p className="font-[var(--font-poppins)] text-[12px] font-medium text-[var(--PBlue)]">
                 No. of Employees
               </p>
-              <p className="mt-3 font-[var(--font-inter)] text-3xl font-bold text-[var(--OffBlack)]">
+              <p
+                className={`mt-3 font-[var(--font-inter)] ${getCountFontClass(stats.employees)} font-bold text-[var(--OffBlack)]`}
+              >
                 {stats.employees}
               </p>
             </article>
@@ -166,8 +195,12 @@ export default function DashboardPage() {
                 ))}
               </select>
             </div>
+ 
+            <h2 className="font-[var(--font-poppins)] text-[18px] font-medium text-[var(--OffBlack)]/70 mt-[24px]">
+              {selectedForm}
+            </h2>
 
-            <div className="relative mt-4 w-full" style={{ height: 250 }}>
+            <div className="relative  w-full" style={{ height: 250 }}>
               {isMounted ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -191,9 +224,7 @@ export default function DashboardPage() {
               ) : null}
 
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                <p className="font-[var(--font-poppins)] text-[12px] font-medium text-[var(--OffBlack)]/70">
-                  {selectedForm}
-                </p>
+
                 <p className="font-[var(--font-inter)] text-[34px] font-semibold leading-none text-[var(--OffBlack)]">
                   {submittedValue}%
                 </p>
@@ -219,9 +250,26 @@ export default function DashboardPage() {
 
           <section className="rounded-2xl bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-[color:var(--OffBlack)]/8 px-4 py-3">
-              <h2 className="font-[var(--font-poppins)] text-[15px] font-medium text-[var(--OffBlack)]">
-                Employees
-              </h2>
+              <div>
+                <h2 className="font-[var(--font-poppins)] text-[15px] font-medium text-[var(--OffBlack)]">
+                  Employees
+                </h2>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="font-[var(--font-inter)] text-[11px] font-medium uppercase tracking-wide text-[var(--OffBlack)]/65">
+                    Show
+                  </span>
+                  <select
+                    value={employeesPerPage}
+                    onChange={(event) => setEmployeesPerPage(Number(event.target.value))}
+                    className="h-7 rounded-md border border-[color:var(--OffBlack)]/12 bg-[var(--OffWhite)] px-2 font-[var(--font-inter)] text-[12px] text-[var(--OffBlack)] outline-none"
+                    aria-label="Employees per page"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
 
               <button
                 type="button"
@@ -236,11 +284,11 @@ export default function DashboardPage() {
               {employees.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm font-medium text-gray-500">No employees listed</div>
               ) : (
-                employees.map((employee, index) => (
+                paginatedEmployees.map((employee, index) => (
                   <article
                     key={employee.designation}
                     className={`flex items-center gap-3 px-4 py-3 ${
-                      index !== employees.length - 1 ? 'border-b border-[color:var(--OffBlack)]/8' : ''
+                      index !== paginatedEmployees.length - 1 ? 'border-b border-[color:var(--OffBlack)]/8' : ''
                     }`}
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--PBlue)] font-[var(--font-poppins)] text-[13px] font-medium text-white">
@@ -259,6 +307,32 @@ export default function DashboardPage() {
                 ))
               )}
             </div>
+
+            {employees.length > employeesPerPage ? (
+              <div className="flex items-center justify-between border-t border-[color:var(--OffBlack)]/8 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => setEmployeePage((prev) => Math.max(1, prev - 1))}
+                  disabled={employeePage === 1}
+                  className="rounded-md border border-[var(--OffBlack)]/12 px-3 py-1.5 font-[var(--font-inter)] text-[12px] font-medium text-[var(--OffBlack)] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Prev
+                </button>
+
+                <p className="font-[var(--font-inter)] text-[12px] text-[var(--OffBlack)]/75">
+                  Page {employeePage} of {totalEmployeePages}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setEmployeePage((prev) => Math.min(totalEmployeePages, prev + 1))}
+                  disabled={employeePage === totalEmployeePages}
+                  className="rounded-md border border-[var(--OffBlack)]/12 px-3 py-1.5 font-[var(--font-inter)] text-[12px] font-medium text-[var(--OffBlack)] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
           </section>
         </section>
       </div>

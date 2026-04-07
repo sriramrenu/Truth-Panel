@@ -254,7 +254,7 @@ export default function FormAnalyticsPage() {
 																data={pieData}
 																dataKey="value"
 																nameKey="name"
-																cx="50%"
+																cx="20%"
 																cy="40%"
 																outerRadius={80}
 															>

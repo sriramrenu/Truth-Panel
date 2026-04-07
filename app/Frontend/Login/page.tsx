@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser } from '../../../utils/api';
+import { Eye, EyeOff } from 'lucide-react';
 
 
 export default function Home() {
@@ -11,6 +12,7 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -101,9 +103,10 @@ export default function Home() {
                   Forgot Password?
                 </button>
               </div>
+              <div className="relative">
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -112,6 +115,16 @@ export default function Home() {
                 placeholder="Enter your password"
                 className="w-full rounded-xl border border-[color:var(--OffBlack)]/15 bg-white px-3 py-3 font-[var(--font-inter)] text-sm font-normal text-[var(--OffBlack)] outline-none transition focus:border-[var(--PBlue)] focus:ring-2 focus:ring-[color:var(--PBlue)]/20"
               />
+                              <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--OffBlack)]/50 transition hover:text-[var(--PBlue)]"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
 
               {error ? (
                 <p className="font-[var(--font-inter)] text-xs text-red-500 mt-1">

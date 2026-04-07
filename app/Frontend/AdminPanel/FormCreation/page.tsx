@@ -77,6 +77,76 @@ export default function FormCreation() {
     }
   };
 
+  const handleDownload = async (surveyId: string, surveyTitle: string) => {
+    try {
+        const { fetchSurveyAnalytics } = await import('../../../../utils/api');
+        const res = await fetchSurveyAnalytics(surveyId);
+        
+        if (res?.success && res.data && res.data.length > 0) {
+            const rawData = res.data;
+
+            // Extract unique question context to dynamically formulate CSV headers
+            const questionMap = new Map<string, string>();
+            rawData.forEach((item: any) => {
+                if (item.question_id && item.Questions?.question_text) {
+                    questionMap.set(item.question_id, item.Questions.question_text);
+                }
+            });
+
+            // Map base architecture headers
+            const headers = ['Session ID', 'User ID', 'Submitted At', ...Array.from(questionMap.values())];
+
+            // Safely iterate submissions pivoted into row definitions by Session
+            const sessions = new Map<string, any>();
+            rawData.forEach((item: any) => {
+                if (!sessions.has(item.session_id)) {
+                    sessions.set(item.session_id, {
+                        session_id: item.session_id,
+                        user_id: item.user_id || 'Anonymous',
+                        submitted_at: new Date(item.created_at || Date.now()).toLocaleString(),
+                        answers: {}
+                    });
+                }
+                sessions.get(item.session_id).answers[item.question_id] = item.answer || '';
+            });
+
+            // Stitch columns aggressively escaping trailing quotations safely
+            let csvContent = headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n';
+
+            sessions.forEach((sessionData) => {
+                const row = [
+                    `"${sessionData.session_id}"`,
+                    `"${sessionData.user_id}"`,
+                    `"${sessionData.submitted_at}"`
+                ];
+
+                questionMap.forEach((_, qId) => {
+                    const answer = sessionData.answers[qId] || '';
+                    row.push(`"${String(answer).replace(/"/g, '""')}"`);
+                });
+
+                csvContent += row.join(',') + '\n';
+            });
+
+            // DOM hook browser generation natively emitting CSV object
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${surveyTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_responses.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } else {
+            alert('No responses found for this survey yet.');
+        }
+    } catch (e) {
+        console.error('Failed to download responses', e);
+        alert('An error occurred generating the download.');
+    }
+  };
+
   useEffect(() => {
     sessionStorage.removeItem('truth_panel_draft');
     // Fetch live surveys from Express API
@@ -182,8 +252,8 @@ export default function FormCreation() {
 
                       <button
                         type="button"
-                        onClick={() => setDeleteTarget(form)}
-                        className="rounded-lg border border-green-400 px-3 py-1.5 mr-2 font-[var(--font-poppins)] text-xs text-green-500"
+                        onClick={() => handleDownload(form.id, form.title || 'survey')}
+                        className="rounded-lg border border-green-400 px-3 py-1.5 mr-2 font-[var(--font-poppins)] text-xs text-green-500 hover:bg-green-50"
                       >
                         Download
                       </button>

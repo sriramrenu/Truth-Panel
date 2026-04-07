@@ -7,7 +7,7 @@ export default function Downbar() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
         <div className="relative w-full max-w-[500  px]">
-          <div className="flex h-20 items-end justify-between rounded-t-[24px] bg-[var(--PBlue)] px-8 pb-3 pt-4 shadow-[0_-4px_18px_rgba(13,22,11,0.15)]">
+          <div className="flex h-20 items-center justify-between rounded-t-[24px] bg-[var(--PBlue)] px-8 pb-3 pt-4 shadow-[0_-4px_18px_rgba(13,22,11,0.15)]">
             <button
               type="button"
               onClick={() => router.push('/Frontend/AdminPanel/Dashboard')}
@@ -18,7 +18,18 @@ export default function Downbar() {
               <span className="font-[var(--font-inter)] text-[11px] text-[var(--OffWhite)]">Dashboard</span>
             </button>
 
-            <div className="w-20" />
+            
+            <button
+              type="button"
+              onClick={() => router.push('/Frontend/AdminPanel/FormCreation')}
+              className="flex flex-col items-center gap-1 pr-[30px]"
+              aria-label="Create form"  
+            >
+              <img src="/FormCreation.svg" alt="Forms" className="h-6 w-6" />
+              <span className="font-[var(--font-inter)] text-[11px] text-[var(--OffWhite)]">Create Form</span>
+            </button>
+
+    
 
             <button
               type="button"
@@ -31,16 +42,8 @@ export default function Downbar() {
                 Forms
               </span>
             </button>
+        
           </div>
-
-          <button
-            type="button"
-            onClick={() => router.push('/Frontend/AdminPanel/FormCreation')}
-            className="absolute left-1/2 top-[5px] flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--SYellow)] shadow-[0_10px_22px_rgba(13,22,11,0.18)]"
-            aria-label="Create form"  
-          >
-            <span className="text-[34px] pb-[8px] leading-none text-white">+</span>
-          </button>
         </div>
       </nav>
   )

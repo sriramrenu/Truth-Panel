@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import Downbar from '../../Components/Downbar';
 import Navbar from '../../Components/Navbar';
+import { fetchUserProfile } from '../../../../utils/api';
 
 export default function Profile() {
   const router = useRouter();
@@ -18,10 +19,7 @@ export default function Profile() {
            router.replace('/Frontend/Login');
            return;
         }
-        const resp = await fetch('http://localhost:5000/api/auth/profile', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await resp.json();
+        const data = await fetchUserProfile();
         if (data.success && data.user) {
             setUser(data.user);
         } else {

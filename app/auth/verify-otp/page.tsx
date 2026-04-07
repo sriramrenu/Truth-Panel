@@ -3,6 +3,7 @@
 import { FormEvent, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { verifyOtp, resetPassword } from '../../../utils/api';
 
 export default function VerifyOTP() {
   const router = useRouter();
@@ -69,14 +70,9 @@ export default function VerifyOTP() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
-      });
-      const data = await response.json();
+      const data = await verifyOtp(email, otp);
 
-      if (!response.ok) {
+      if (!data.success) {
         throw new Error(data.error || 'Invalid OTP. Please try again.');
       }
 
@@ -116,14 +112,9 @@ export default function VerifyOTP() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword }),
-      });
-      const data = await response.json();
+      const data = await resetPassword(email, newPassword);
 
-      if (!response.ok) {
+      if (!data.success) {
         throw new Error(data.error || 'Failed to reset password.');
       }
 

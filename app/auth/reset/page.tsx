@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, ArrowLeft } from 'lucide-react';
+import { sendOtp } from '../../../utils/api';
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -24,17 +25,12 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const data = await response.json();
-      
-      if (!response.ok) {
+      const data = await sendOtp(email.trim().toLowerCase());
+
+      if (!data.success) {
         throw new Error(data.error || 'Failed to send OTP');
       }
-      
+
       setMessage('✓ ' + data.message);
       sessionStorage.setItem('reset_email', email.trim().toLowerCase());
       setTimeout(() => {

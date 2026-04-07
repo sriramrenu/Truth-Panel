@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { loginUser } from '../../../utils/api';
 
 
 export default function Home() {
@@ -24,14 +25,9 @@ export default function Home() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password: password.trim() })
-      });
-      const data = await response.json();
+      const data = await loginUser(email.trim().toLowerCase(), password.trim());
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         setError(data.error || 'Invalid email or password.');
         setIsSubmitting(false);
         return;

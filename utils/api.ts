@@ -4,7 +4,7 @@
  * to our Express.js backend running on localhost:5000.
  */
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Utility to grab the user's JWT standardly for requests
 const getAuthHeaders = async () => {
@@ -132,6 +132,51 @@ export const createEmployee = async (email: string, password?: string) => {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ email, password: password || '12345678' })
+    });
+    return response.json();
+};
+
+/* --- AUTHENTICATION & PROFILE --- */
+
+export const loginUser = async (email: string, password?: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    });
+    return response.json();
+};
+
+export const fetchUserProfile = async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        headers: await getAuthHeaders()
+    });
+    return response.json();
+};
+
+export const sendOtp = async (email: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    return response.json();
+};
+
+export const verifyOtp = async (email: string, otp: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+    });
+    return response.json();
+};
+
+export const resetPassword = async (email: string, newPassword: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword })
     });
     return response.json();
 };

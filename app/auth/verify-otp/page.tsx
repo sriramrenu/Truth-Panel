@@ -1,11 +1,11 @@
 'use client';
 
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { verifyOtp, resetPassword } from '../../../utils/api';
 
-export default function VerifyOTP() {
+function VerifyOTPContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || sessionStorage.getItem('reset_email') || '';
@@ -442,5 +442,13 @@ export default function VerifyOTP() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function VerifyOTP() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-[var(--OffWhite)] to-blue-50"></div>}>
+      <VerifyOTPContent />
+    </Suspense>
   );
 }

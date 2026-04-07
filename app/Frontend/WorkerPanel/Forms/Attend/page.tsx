@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface FormQuestion {
@@ -37,7 +37,7 @@ interface FormResponse {
 
 const FORMS_KEY = 'truth_panel_forms'; // Legacy fallback only
 
-export default function AttendFormPage() {
+function AttendFormContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const formId = searchParams.get('id');
@@ -381,5 +381,13 @@ export default function AttendFormPage() {
 				</div>
 			</footer>
 		</main>
+	);
+}
+
+export default function AttendFormPage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen bg-[var(--OffWhite)]"></div>}>
+			<AttendFormContent />
+		</Suspense>
 	);
 }

@@ -26,6 +26,12 @@ app.get('/', (req, res) => {
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// Only listen locally if we are NOT on Vercel Serverless
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
+
+// Export the Express App for Vercel Serverless Edge Runtime
+module.exports = app;

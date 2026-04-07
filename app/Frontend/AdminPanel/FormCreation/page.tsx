@@ -179,6 +179,15 @@ export default function FormCreation() {
                       {form.questions.length} questions
                     </p>
                     <div className="mt-3 flex justify-end">
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(form)}
+                        className="rounded-lg border border-green-400 px-3 py-1.5 mr-2 font-[var(--font-poppins)] text-xs text-green-500"
+                      >
+                        Download
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(form)}

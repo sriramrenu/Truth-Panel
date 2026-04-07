@@ -50,6 +50,14 @@ interface FormResponse {
 
 const PIE_COLORS = ['#1C69AE', '#f5c518', '#4CAF50', '#E91E63', '#9C27B0', '#FF5722'];
 
+const getPieColor = (index: number) => {
+	if (index < PIE_COLORS.length) return PIE_COLORS[index];
+
+	// Generate additional distinct colors using golden-angle hue steps.
+	const hue = Math.round((index * 137.508) % 360);
+	return `hsl(${hue}, 68%, 52%)`;
+};
+
 const formatSubmittedAt = (value: string) =>
 	new Intl.DateTimeFormat('en-US', {
 		month: 'short',
@@ -259,7 +267,7 @@ export default function FormAnalyticsPage() {
 																outerRadius={80}
 															>
 																	{pieData.map((_, pieIndex) => (
-																		<Cell key={`cell-${pieIndex}`} fill={PIE_COLORS[pieIndex % PIE_COLORS.length]} />
+																		<Cell key={`cell-${pieIndex}`} fill={getPieColor(pieIndex)} />
 																	))}
 															</Pie>
 															<Tooltip

@@ -63,7 +63,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="flex flex-col space-y-6 pt-4">
+    <div className="flex flex-col space-y-6 pt-4 pb-24">
       <WNavbar />
       {/* Top Value Cards */}
       <div className="grid grid-cols-2 gap-4">

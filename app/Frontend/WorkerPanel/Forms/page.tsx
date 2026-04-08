@@ -87,7 +87,7 @@ export default function WorkerFormsPage() {
 
 	return (
 		<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-28">
+			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-24">
 				<header className="bg-white px-4 py-3 shadow-[0_1px_10px_rgba(13,22,11,0.08)]">
 					<div className="flex items-center justify-between gap-3">
 						<button

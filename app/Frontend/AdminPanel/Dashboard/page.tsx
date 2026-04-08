@@ -71,7 +71,14 @@ export default function DashboardPage() {
         const { fetchAllSurveys, fetchEmployees } = await import('../../../../utils/api');
         
         let surveysCount = 0;
-        const res = await fetchAllSurveys();
+        let empsCount = 0;
+        
+        // Fetch surveys and employees concurrently
+        const [res, empRes] = await Promise.all([
+          fetchAllSurveys(),
+          fetchEmployees()
+        ]);
+
         if (res?.success) {
           const surveys = res.data || [];
           surveysCount = surveys.length;
@@ -80,8 +87,6 @@ export default function DashboardPage() {
           if (surveys.length > 0) setSelectedForm(surveys[0].title || 'Untitled');
         }
 
-        let empsCount = 0;
-        const empRes = await fetchEmployees();
         if (empRes?.success) {
            setEmployees(empRes.employees.map((e: any) => ({ name: e.name, designation: e.email })));
            empsCount = empRes.count;

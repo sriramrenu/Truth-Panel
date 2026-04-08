@@ -17,10 +17,15 @@ export default function Dashboard() {
     const loadDashboard = async () => {
       try {
         const { fetchWalletHistory, fetchAllSurveys, fetchActiveSession, checkUserSubmission } = await import('../../../../utils/api');
-        const walletRes = await fetchWalletHistory();
+        
+        // Fetch wallet and surveys concurrently
+        const [walletRes, surveysRes] = await Promise.all([
+          fetchWalletHistory(),
+          fetchAllSurveys()
+        ]);
+
         if (walletRes?.success) setPoints(walletRes.total_points || 0);
         
-        const surveysRes = await fetchAllSurveys();
         if (surveysRes?.success) {
           const allSurveys = surveysRes.data || [];
           // Negotiate expired surveys actively out of view
@@ -31,28 +36,28 @@ export default function Dashboard() {
           
           setSurveys(activeSurveys);
 
-          // Count surveys the worker hasn't yet submitted (excluding expired ones)
-          let pendingCount = 0;
-          const pendingArray: any[] = [];
-          for (const s of activeSurveys) {
+          // Evaluate pending forms concurrently instead of sequentially
+          const pendingPromises = activeSurveys.map(async (s: any) => {
             try {
               const sessionRes = await fetchActiveSession(s.id);
               if (sessionRes?.success && sessionRes.session?.id) {
                 const checkRes = await checkUserSubmission(sessionRes.session.id);
                 if (!checkRes?.already_submitted) {
-                    pendingCount++;
-                    pendingArray.push(s);
+                    return s;
                 }
               } else {
-                pendingCount++; // Active and no session means pending
-                pendingArray.push(s);
+                return s; // Active and no session means pending
               }
             } catch { 
-                pendingCount++;
-                pendingArray.push(s);
+                return s;
             }
-          }
-          setPendingFormsCount(pendingCount);
+            return null; // Not pending
+          });
+
+          const results = await Promise.all(pendingPromises);
+          const pendingArray = results.filter(s => s !== null);
+
+          setPendingFormsCount(pendingArray.length);
           setPendingSurveys(pendingArray);
         }
       } catch (err) {

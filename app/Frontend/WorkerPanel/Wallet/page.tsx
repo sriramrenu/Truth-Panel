@@ -113,7 +113,7 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="flex flex-col space-y-6 pt-6 relative">
+    <div className="flex flex-col space-y-6 pt-6 pb-24 relative">
       <WNavbar />
       
       {/* Toast Notification */}

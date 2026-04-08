@@ -4,7 +4,7 @@
  * to our Express.js backend running on localhost:5000.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
 
 // Utility to grab the user's JWT standardly for requests
 const getAuthHeaders = async () => {

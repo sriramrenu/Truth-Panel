@@ -52,7 +52,7 @@ export default function Profile() {
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-white font-[var(--font-poppins)] text-lg"
             aria-label="Back to dashboard"
           >
-            {'<'}
+			<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
           </button>
 
           <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">

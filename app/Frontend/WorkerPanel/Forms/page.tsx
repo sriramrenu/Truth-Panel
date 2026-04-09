@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import WDownbar from '../../Components/WDownbar';
 
@@ -36,11 +36,28 @@ interface FormResponse {
 	answers: QuestionAnswer[];
 }
 
+type SortOption = 'latest' | 'oldest' | 'name';
+
 
 export default function WorkerFormsPage() {
 	const router = useRouter();
 	const [forms, setForms] = useState<TruthPanelForm[]>([]);
 	const [submittedFormIds, setSubmittedFormIds] = useState<string[]>([]);
+	const [sortOption, setSortOption] = useState<SortOption>('latest');
+
+	const sortedForms = useMemo(() => {
+		const formsCopy = [...forms];
+
+		if (sortOption === 'name') {
+			return formsCopy.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+		}
+
+		return formsCopy.sort((a, b) => {
+			const aTime = new Date(a.createdAt).getTime() || 0;
+			const bTime = new Date(b.createdAt).getTime() || 0;
+			return sortOption === 'latest' ? bTime - aTime : aTime - bTime;
+		});
+	}, [forms, sortOption]);
 
 	useEffect(() => {
 		const user = (() => {
@@ -96,7 +113,7 @@ export default function WorkerFormsPage() {
 							className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 font-[var(--font-poppins)] text-lg"
 							aria-label="Back to worker dashboard"
 						>
-							{'<'}
+							<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
 						</button>
 
 						<h1 className="font-[var(--font-poppins)] text-xl font-medium">My Forms</h1>
@@ -113,7 +130,20 @@ export default function WorkerFormsPage() {
 				</header>
 
 				<section className="flex-1 px-4 py-4">
-					{forms.length === 0 ? (
+					<div className="mb-3 flex items-center justify-end">
+						<select
+							value={sortOption}
+							onChange={(event) => setSortOption(event.target.value as SortOption)}
+							className="h-8 rounded-lg border border-[color:var(--OffBlack)]/15 bg-white px-2 font-[var(--font-inter)] text-xs text-[var(--OffBlack)] outline-none"
+							aria-label="Sort forms"
+						>
+							<option value="latest">Latest</option>
+							<option value="oldest">Oldest</option>
+							<option value="name">Name (A-Z)</option>
+						</select>
+					</div>
+
+					{sortedForms.length === 0 ? (
 						<div className="flex h-full min-h-[55vh] flex-col items-center justify-center text-center">
 							<div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-white shadow-sm">
 								<svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true">
@@ -127,7 +157,7 @@ export default function WorkerFormsPage() {
 						</div>
 					) : (
 						<div className="overflow-hidden rounded-xl bg-white">
-							{forms.map((form, index) => {
+							{sortedForms.map((form, index) => {
 								const completed = isSubmitted(form.id);
 								const expired = form.endTime ? new Date() > new Date(form.endTime) : false;
 
@@ -138,7 +168,7 @@ export default function WorkerFormsPage() {
 										disabled={completed || expired}
 										onClick={() => router.push(`/Frontend/WorkerPanel/Forms/Attend?id=${encodeURIComponent(form.id)}`)}
 										className={`flex w-full items-center justify-between gap-3 px-4 py-4 text-left ${
-											index !== forms.length - 1 ? 'border-b border-[color:rgba(13,22,11,0.08)]' : ''
+											index !== sortedForms.length - 1 ? 'border-b border-[color:rgba(13,22,11,0.08)]' : ''
 										} ${(completed || expired) ? 'pointer-events-none opacity-60' : ''}`}
 									>
 										<div className="min-w-0">

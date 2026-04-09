@@ -110,7 +110,7 @@ export default function FormPreviewPage() {
 							className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-[var(--OffWhite)] font-[var(--font-poppins)] text-lg"
 							aria-label="Go back"
 						>
-							{'<'}
+							<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
 						</button>
 						<span className="rounded-full bg-[var(--SYellow)] px-3 py-1 font-[var(--font-poppins)] text-xs font-medium text-[var(--OffBlack)]">
 							Preview Mode

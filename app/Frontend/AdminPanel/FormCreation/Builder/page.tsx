@@ -223,7 +223,7 @@ export default function FormBuilderPage() {
 						className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-[var(--OffWhite)] font-[var(--font-poppins)] text-lg"
 						aria-label="Go back"
 					>
-						{'<'}
+						<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
 					</button>
 					<h1 className="font-[var(--font-poppins)] text-lg font-medium">Form Builder</h1>
 				</header>
@@ -478,7 +478,7 @@ export default function FormBuilderPage() {
 							className="absolute left-1/2 top-0 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--SYellow)] shadow-[0_10px_22px_rgba(13,22,11,0.18)]"
 							aria-label="Add question"
 						>
-							<span className="text-4xl mb-2 leading-none text-white">+</span>
+							<img src="/Plus.svg" alt="Add question" className="h-6 w-6" />
 						</button>
 					</div>
 				</nav>

@@ -192,7 +192,7 @@ export default function FormAnalyticsPage() {
 							className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-white font-[var(--font-poppins)] text-lg"
 							aria-label="Back to forms"
 						>
-							{'<'}
+							<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
 						</button>
 
 						<div className="min-w-0 flex-1">

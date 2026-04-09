@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Downbar from '../../Components/Downbar';
 import Navbar from '../../Components/Navbar';
@@ -37,12 +37,29 @@ interface FormResponse {
   answers: QuestionAnswer[];
 }
 
+type SortOption = 'latest' | 'oldest' | 'name';
+
 
 export default function Forms() {
   const router = useRouter();
   const [forms, setForms] = useState<TruthPanelForm[]>([]);
   const [responseCounts, setResponseCounts] = useState<Record<string, number>>({});
   const [isMounted, setIsMounted] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>('latest');
+
+  const sortedForms = useMemo(() => {
+    const formsCopy = [...forms];
+
+    if (sortOption === 'name') {
+      return formsCopy.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    }
+
+    return formsCopy.sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime() || 0;
+      const bTime = new Date(b.createdAt).getTime() || 0;
+      return sortOption === 'latest' ? bTime - aTime : aTime - bTime;
+    });
+  }, [forms, sortOption]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -107,13 +124,26 @@ export default function Forms() {
             </button>
           </div>
 
+          <div className="mt-3 flex items-center justify-end">
+            <select
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value as SortOption)}
+              className="h-8 rounded-lg border border-[color:var(--OffBlack)]/15 bg-white px-2 font-[var(--font-inter)] text-xs text-[var(--OffBlack)] outline-none"
+              aria-label="Sort forms"
+            >
+              <option value="latest">Latest</option>
+              <option value="oldest">Oldest</option>
+              <option value="name">Name (A-Z)</option>
+            </select>
+          </div>
+
           <div className="mt-5 space-y-3">
-            {!isMounted ? null : forms.length === 0 ? (
+            {!isMounted ? null : sortedForms.length === 0 ? (
               <div className="flex min-h-[50vh] items-center justify-center rounded-2xl bg-white px-4 text-center shadow-sm">
                 <p className="font-[var(--font-inter)] text-sm text-[var(--OffBlack)]/70">No forms created yet.</p>
               </div>
             ) : (
-              forms.map((form) => (
+              sortedForms.map((form) => (
                 <button
                   key={form.id}
                   type="button"

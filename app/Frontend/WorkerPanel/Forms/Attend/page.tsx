@@ -263,7 +263,7 @@ function AttendFormContent() {
 							className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 font-[var(--font-poppins)] text-lg"
 							aria-label="Back to forms"
 						>
-							{'<'}
+							<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
 						</button>
 						<h1 className="truncate font-[var(--font-poppins)] text-lg font-medium">{form.title || 'Untitled Form'}</h1>
 						{timeLeft && (

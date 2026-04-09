@@ -15,8 +15,8 @@ export default function WDownbar() {
             className="flex flex-col items-center gap-1"
             aria-label="Dashboard"
           >
-            <img src="/DashboardIcon_rounded.svg" alt="Dashboard" className="h-6 w-6 opacity-80" />
-            <span className="font-[var(--font-inter)] text-[11px] text-[color:rgba(237,247,246,0.7)]">Dashboard</span>
+            <img src="/DashboardIcon_rounded.svg" alt="Dashboard" className="h-6 w-6" />
+            <span className="font-[var(--font-inter)] text-[11px] text-[var(--OffWhite)]">Dashboard</span>
           </button>
 
           <div className="w-20" />

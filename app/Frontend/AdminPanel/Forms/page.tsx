@@ -110,21 +110,9 @@ export default function Forms() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="font-[var(--font-poppins)] text-2xl font-medium text-[var(--OffBlack)]">Forms</h1>
-              <p className="mt-1 font-[var(--font-inter)] text-sm text-[var(--OffBlack)]/70">
-                Review forms and response totals.
-              </p>
+              
             </div>
 
-            <button
-              type="button"
-              onClick={() => router.push('/Frontend/AdminPanel/FormCreation')}
-              className="rounded-lg bg-[var(--PBlue)] px-3 py-2 font-[var(--font-poppins)] text-xs text-white"
-            >
-              New Form
-            </button>
-          </div>
-
-          <div className="mt-3 flex items-center justify-end">
             <select
               value={sortOption}
               onChange={(event) => setSortOption(event.target.value as SortOption)}
@@ -136,6 +124,7 @@ export default function Forms() {
               <option value="name">Name (A-Z)</option>
             </select>
           </div>
+
 
           <div className="mt-5 space-y-3">
             {!isMounted ? null : sortedForms.length === 0 ? (

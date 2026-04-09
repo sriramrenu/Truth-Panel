@@ -39,7 +39,7 @@ export default function Dashboard() {
           // Evaluate pending forms concurrently instead of sequentially
           const pendingPromises = activeSurveys.map(async (s: any) => {
             try {
-              const sessionRes = await fetchActiveSession(s.id);
+              const sessionRes = await fetchActiveSession(s.id, s.end_time);
               if (sessionRes?.success && sessionRes.session?.id) {
                 const checkRes = await checkUserSubmission(sessionRes.session.id);
                 if (!checkRes?.already_submitted) {

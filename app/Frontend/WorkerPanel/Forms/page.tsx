@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import WDownbar from '../../Components/WDownbar';
+import WNavbar from '../../Components/WNavbar';
 
 interface FormQuestion {
 	id: string;
@@ -84,7 +85,7 @@ export default function WorkerFormsPage() {
 					const submittedIds: string[] = [];
 					for (const survey of normalized) {
 						try {
-							const sessionRes = await fetchActiveSession(survey.id);
+							const sessionRes = await fetchActiveSession(survey.id, survey.endTime);
 							if (sessionRes?.success && sessionRes.session?.id) {
 								const checkRes = await checkUserSubmission(sessionRes.session.id);
 								if (checkRes?.already_submitted) submittedIds.push(survey.id);
@@ -105,32 +106,11 @@ export default function WorkerFormsPage() {
 	return (
 		<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
 			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-24">
-				<header className="bg-white px-4 py-3 shadow-[0_1px_10px_rgba(13,22,11,0.08)]">
-					<div className="flex items-center justify-between gap-3">
-						<button
-							type="button"
-							onClick={() => router.push('/Frontend/WorkerPanel/Dashboard')}
-							className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 font-[var(--font-poppins)] text-lg"
-							aria-label="Back to worker dashboard"
-						>
-							<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
-						</button>
-
-						<h1 className="font-[var(--font-poppins)] text-xl font-medium">My Forms</h1>
-
-						<button
-							type="button"
-							onClick={() => router.push('/Frontend/WorkerPanel/Profile')}
-							className="h-9 w-9 rounded-full"
-							aria-label="Profile"
-						>
-							<img src="/ProfileIcon_rounded.svg" alt="Profile" className="h-6 w-6" />
-						</button>
-					</div>
-				</header>
+				<WNavbar />
 
 				<section className="flex-1 px-4 py-4">
-					<div className="mb-3 flex items-center justify-end">
+					<div className="mb-3 flex justify-between items-center">
+						<h1 className="font-[var(--font-poppins)] text-2xl font-medium text-[var(--OffBlack)]">Forms</h1>
 						<select
 							value={sortOption}
 							onChange={(event) => setSortOption(event.target.value as SortOption)}

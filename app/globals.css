@@ -7,4 +7,14 @@
   --SYellow: #f5c518;
 }
 
+select {
+  appearance: none;
+  background-color: #EDF1F6;
+  border: 1px solid var(--OffBlack);
+  padding-right: 50px;
+  background-image: url('/DownArrow.svg'); /* Your custom arrow */
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
 

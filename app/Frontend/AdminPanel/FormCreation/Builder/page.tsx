@@ -93,7 +93,8 @@ export default function FormBuilderPage() {
 					setFormId(parsed.id || createId());
 					setTitle(parsed.title || '');
 					setDescription(parsed.description || '');
-					setQuestions(parsed.questions);
+					// Ensure all questions are editable
+					setQuestions(parsed.questions.map((q: FormQuestion) => ({ ...q, isEditable: true })));
 					setCurrentQuestionIndex(parsed.currentQuestionIndex || 0);
 				}
 			} catch {
@@ -199,7 +200,7 @@ export default function FormBuilderPage() {
 			startDateTime,
 			endDateTime,
 			pointsPerQuestion,
-			questions: questions.map(({ isEditable, ...q }) => ({
+				questions: questions.map(({ isEditable: _, ...q }) => ({
 				...q,
 				questionText: q.questionText.trim(),
 				options:
@@ -326,20 +327,7 @@ export default function FormBuilderPage() {
 							</p>
 							<div className="flex items-center gap-2">
 								<button
-									type="button"
-									onClick={() => updateCurrentQuestion({ isEditable: !currentQuestion.isEditable })}
-									className="flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--OffBlack)]/15 bg-white"
-									aria-label={currentQuestion.isEditable ? 'Lock question editing' : 'Edit question'}
-								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-										<path
-											d="M4 20H8L18.5 9.5C19.1 8.9 19.1 7.9 18.5 7.3L16.7 5.5C16.1 4.9 15.1 4.9 14.5 5.5L4 16V20Z"
-											stroke="currentColor"
-											strokeWidth="1.8"
-										/>
-									</svg>
-								</button>
-								<button
+
 									type="button"
 									onClick={() => setDeleteTarget(currentQuestion)}
 									className="flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600"
@@ -361,19 +349,15 @@ export default function FormBuilderPage() {
 						<div className="space-y-3">
 							<input
 								type="text"
-								disabled={!currentQuestion.isEditable}
-								value={currentQuestion.questionText}
-								onChange={(event) => updateCurrentQuestion({ questionText: event.target.value })}
-								placeholder="Type your question here..."
-								className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-3 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)] disabled:cursor-not-allowed disabled:bg-[color:rgba(255,255,255,0.65)]"
+							value={currentQuestion.questionText}
+							onChange={(event) => updateCurrentQuestion({ questionText: event.target.value })}
+							placeholder="Type your question here..."
+							className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-3 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
 							/>
-
 							<select
-								disabled={!currentQuestion.isEditable}
-								value={currentQuestion.type}
-								onChange={(event) => handleTypeChange(event.target.value as QuestionType)}
-								className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-3 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)] disabled:cursor-not-allowed disabled:bg-[color:rgba(255,255,255,0.65)]"
-							>
+							value={currentQuestion.type}
+							onChange={(event) => handleTypeChange(event.target.value as QuestionType)}
+							className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-3 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]">
 								<option value="multiple_choice">Multiple Choice (single answer)</option>
 								<option value="checkboxes">Checkboxes (multiple answers)</option>
 								<option value="short_text">Short Text</option>
@@ -393,17 +377,15 @@ export default function FormBuilderPage() {
 										<div key={`${currentQuestion.id}-${optionIndex}`} className="flex items-center gap-2">
 											<input
 												type="text"
-												disabled={!currentQuestion.isEditable}
-												value={option}
-												onChange={(event) => handleOptionChange(optionIndex, event.target.value)}
-												placeholder={`Option ${optionIndex + 1}`}
-												className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-2.5 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)] disabled:cursor-not-allowed disabled:bg-[color:rgba(255,255,255,0.65)]"
-											/>
-											<button
-												type="button"
-												disabled={!currentQuestion.isEditable}
-												onClick={() => handleRemoveOption(optionIndex)}
-												className="rounded-lg border border-red-200 bg-white px-2 py-2 font-[var(--font-inter)] text-xs text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+													value={option}
+													onChange={(event) => handleOptionChange(optionIndex, event.target.value)}
+													placeholder={`Option ${optionIndex + 1}`}
+													className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-2.5 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
+												/>
+												<button
+													type="button"
+													onClick={() => handleRemoveOption(optionIndex)}
+													className="rounded-lg border border-red-200 bg-white px-2 py-2 font-[var(--font-inter)] text-xs text-red-600 hover:bg-red-50"
 												aria-label={`Delete option ${optionIndex + 1}`}
 											>
 												Del
@@ -413,9 +395,8 @@ export default function FormBuilderPage() {
 
 									<button
 										type="button"
-										disabled={!currentQuestion.isEditable}
 										onClick={handleAddOption}
-										className="font-[var(--font-poppins)] text-sm font-medium text-[var(--PBlue)] disabled:cursor-not-allowed disabled:opacity-50"
+										className="font-[var(--font-poppins)] text-sm font-medium text-[var(--PBlue)]"
 									>
 										+ Add Option
 									</button>

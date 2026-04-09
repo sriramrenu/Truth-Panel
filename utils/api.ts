@@ -6,15 +6,23 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
 
+const isSurveyExpired = (endTime?: string | null) => {
+    if (!endTime) return false;
+    const parsed = new Date(endTime).getTime();
+    if (Number.isNaN(parsed)) return false;
+    return Date.now() > parsed;
+};
+
 // Utility to grab the user's JWT standardly for requests
 const getAuthHeaders = async () => {
     // Note: Assuming your frontend sets truth_panel_token or uses Supabase cookies natively.
     // The exact token retrieval depends on your final Auth setup in the frontend team.
-    const token = typeof window !== 'undefined' ? localStorage.getItem('supabase_token') : '';
-    return {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('supabase_token') : null;
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
     };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
 };
 
 /* --- SURVEYS & SESSIONS --- */
@@ -52,11 +60,26 @@ export const startLiveSession = async (surveyId: string) => {
     return response.json();
 };
 
-export const fetchActiveSession = async (surveyId: string) => {
+export const fetchActiveSession = async (surveyId: string, endTime?: string | null) => {
+    // Avoid requesting an endpoint that intentionally returns 403 for expired surveys.
+    if (isSurveyExpired(endTime)) {
+        return {
+            success: false,
+            status: 403,
+            message: 'Survey session has expired',
+        };
+    }
+
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/active-session`, {
         headers: await getAuthHeaders(),
     });
-    return response.json();
+
+    const payload = await response.json().catch(() => ({}));
+    return {
+        ...payload,
+        status: response.status,
+        success: typeof payload?.success === 'boolean' ? payload.success : response.ok,
+    };
 };
 
 /* --- RESPONSES --- */

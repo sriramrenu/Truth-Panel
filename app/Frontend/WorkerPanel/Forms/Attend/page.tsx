@@ -57,12 +57,14 @@ function AttendFormContent() {
 		const loadSurvey = async () => {
 			try {
 				const { fetchAllSurveys, fetchActiveSession } = await import('../../../../../utils/api');
+				let surveyEndTime: string | null = null;
 				
 				// Fetch the survey details from backend
 				const surveysRes = await fetchAllSurveys();
 				if (surveysRes?.success) {
 					const found = surveysRes.data?.find((s: any) => s.id === formId);
 					if (found) {
+						surveyEndTime = found.end_time || null;
 						// Normalize backend Questions structure to local shape
 						setForm({
 							id: found.id,
@@ -81,7 +83,7 @@ function AttendFormContent() {
 				}
 				
 				// Auto-resolve the active live session for this survey
-				const sessionRes = await fetchActiveSession(formId);
+				const sessionRes = await fetchActiveSession(formId, surveyEndTime);
 				if (sessionRes?.success && sessionRes.session?.id) {
 					setSessionId(sessionRes.session.id);
 
@@ -319,13 +321,23 @@ function AttendFormContent() {
 												key={`${currentQuestion.id}-cb-${optionIndex}`}
 												type="button"
 												onClick={() => toggleCheckbox(currentQuestion.id, option)}
-												className={`w-full rounded-xl border px-3 py-3 text-left font-[var(--font-poppins)] text-sm transition ${
+												className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left font-[var(--font-poppins)] text-sm transition ${
 													selected
 														? 'border-[var(--PBlue)] bg-[var(--PBlue)] text-white'
 														: 'border-[var(--PBlue)] bg-white text-[var(--OffBlack)]'
 												}`}
 											>
-												{option}
+												<span
+													className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
+														selected
+															? 'border-white bg-white text-[var(--PBlue)]'
+															: 'border-[color:var(--OffBlack)]/35 bg-transparent text-transparent'
+													}`}
+													aria-hidden="true"
+												>
+													✓
+												</span>
+												<span className="flex-1">{option}</span>
 											</button>
 										);
 									})

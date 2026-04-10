@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const supabase = require('../config/supabaseClient');
 
 const otpStore = new Map();
 
@@ -20,14 +21,26 @@ const sendOTP = async (req, res) => {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        // Generate 6 digit OTP
+        // 1. Check if user exists in the database
+        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) {
+            console.error('Error checking user existence:', listError);
+            return res.status(500).json({ error: 'Internal server error checking user' });
+        }
+
+        const user = usersData.users.find(u => u.email === email.trim().toLowerCase());
+        if (!user) {
+            return res.status(404).json({ success: false, error: "mail doesn't exists" });
+        }
+
+        // 2. Generate 6 digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
 
-        // Store OTP
+        // 3. Store OTP
         otpStore.set(email, { otp, expiresAt });
 
-        // Send Email
+        // 4. Send Email
         const mailOptions = {
             from: '"Truth Panel" <r.sriramrenu@gmail.com>',
             to: email,
@@ -77,7 +90,6 @@ const verifyOTP = async (req, res) => {
     }
 };
 
-const supabase = require('../config/supabaseClient');
 
 const resetPassword = async (req, res) => {
     try {

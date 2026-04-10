@@ -49,7 +49,7 @@ export default function ResetPassword() {
         <section className="w-full rounded-2xl border border-[color:var(--OffBlack)]/10 bg-[var(--OffWhite)] p-6 shadow-[0_12px_32px_rgba(13,22,11,0.08)]">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push('/Frontend/Login')}
             className="mb-6 inline-flex items-center gap-2 font-[var(--font-inter)] text-sm font-medium text-[var(--PBlue)] transition hover:text-[color:var(--PBlue)]/80"
           >
             <ArrowLeft size={16} />

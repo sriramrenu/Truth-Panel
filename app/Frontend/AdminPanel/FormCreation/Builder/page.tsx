@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRef } from 'react';
 
 type QuestionType = 'multiple_choice' | 'checkboxes' | 'short_text';
 
@@ -69,6 +70,17 @@ export default function FormBuilderPage() {
 	const [questions, setQuestions] = useState<FormQuestion[]>([createQuestion()]);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [deleteTarget, setDeleteTarget] = useState<FormQuestion | null>(null);
+
+	const questionInputRef = useRef<HTMLInputElement | null>(null);
+	const optionRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+	useEffect(() => {
+		questionInputRef.current?.focus();
+	}, [currentQuestionIndex]);
+
+	useEffect(() => {
+		optionRefs.current = [];
+	}, [currentQuestionIndex]);
 
 	useEffect(() => {
 		// Try to load from sessionStorage draft
@@ -156,6 +168,11 @@ export default function FormBuilderPage() {
 	const handleAddOption = () => {
 		const nextOptions = [...(currentQuestion.options ?? []), ''];
 		updateCurrentQuestion({ options: nextOptions });
+
+		  setTimeout(() => {
+			const lastIndex = nextOptions.length - 1;
+			optionRefs.current[lastIndex]?.focus();
+		}, 0);
 	};
 
 	const handleRemoveOption = (optionIndex: number) => {
@@ -348,11 +365,13 @@ export default function FormBuilderPage() {
 
 						<div className="space-y-3">
 							<input
-								type="text"
+							ref={questionInputRef}
+							type="text"
 							value={currentQuestion.questionText}
 							onChange={(event) => updateCurrentQuestion({ questionText: event.target.value })}
 							placeholder="Type your question here..."
 							className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-3 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
+							autoFocus
 							/>
 							<select
 							value={currentQuestion.type}
@@ -376,11 +395,14 @@ export default function FormBuilderPage() {
 									{(currentQuestion.options ?? []).map((option, optionIndex) => (
 										<div key={`${currentQuestion.id}-${optionIndex}`} className="flex items-center gap-2">
 											<input
+												ref={(el) => {
+													optionRefs.current[optionIndex] = el;
+												}}
 												type="text"
-													value={option}
-													onChange={(event) => handleOptionChange(optionIndex, event.target.value)}
-													placeholder={`Option ${optionIndex + 1}`}
-													className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-2.5 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
+												value={option}
+												onChange={(event) => handleOptionChange(optionIndex, event.target.value)}
+												placeholder={`Option ${optionIndex + 1}`}
+												className="w-full rounded-xl border border-[color:var(--OffBlack)]/12 bg-white px-3 py-2.5 font-[var(--font-inter)] text-sm outline-none focus:border-[var(--PBlue)]"
 												/>
 												<button
 													type="button"

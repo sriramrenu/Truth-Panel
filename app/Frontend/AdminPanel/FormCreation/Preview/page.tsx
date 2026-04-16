@@ -85,7 +85,7 @@ export default function FormPreviewPage() {
 	if (!form) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-5 text-center">
+				<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col items-center justify-center px-5 text-center">
 					<p className="font-[var(--font-poppins)] text-xl font-medium">No form available for preview</p>
 					<button
 						type="button"
@@ -101,7 +101,7 @@ export default function FormPreviewPage() {
 
 	return (
 		<main className="min-h-screen bg-white text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col px-4 pb-6">
+			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col px-4 pb-6">
 				<header className="pt-4">
 					<div className="flex items-center justify-between">
 						<button

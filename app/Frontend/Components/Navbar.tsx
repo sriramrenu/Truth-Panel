@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 export default function Navbar() {
   const router = useRouter();
   return (
-        <header className="flex items-center justify-between px-4 py-3">
+        <header className="relative z-1 flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <img src="/logo.svg" alt="TATA INSIGHTS AND QUANTS" className="h-8 w-auto object-contain" />
           </div>

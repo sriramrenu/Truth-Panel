@@ -70,6 +70,7 @@ export default function FormBuilderPage() {
 	const [questions, setQuestions] = useState<FormQuestion[]>([createQuestion()]);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [deleteTarget, setDeleteTarget] = useState<FormQuestion | null>(null);
+	const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
 	const questionInputRef = useRef<HTMLInputElement | null>(null);
 	const optionRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -233,11 +234,11 @@ export default function FormBuilderPage() {
 
 	return (
 		<main className="min-h-screen bg-white text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-36">
+			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-36">
 				<header className="flex items-center gap-3 border-b border-[color:var(--OffBlack)]/8 px-4 py-3">
 					<button
 						type="button"
-						onClick={() => router.back()}
+						onClick={() => setShowDiscardConfirm(true)}
 						className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-[var(--OffWhite)] font-[var(--font-poppins)] text-lg"
 						aria-label="Go back"
 					>
@@ -509,6 +510,34 @@ export default function FormBuilderPage() {
 								className="rounded-lg bg-red-600 px-4 py-2 font-[var(--font-inter)] text-sm text-white"
 							>
 								Delete
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
+
+			{showDiscardConfirm ? (
+				<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 px-5">
+					<div className="w-full max-w-[320px] rounded-2xl bg-white p-5 shadow-xl">
+						<p className="font-[var(--font-poppins)] text-base font-medium text-[var(--OffBlack)]">Discard form</p>
+						<p className="mt-2 font-[var(--font-inter)] text-sm text-[var(--OffBlack)]/70">
+							Are you sure you want to discard this form?
+						</p>
+
+						<div className="mt-5 flex justify-end gap-2">
+							<button
+								type="button"
+								onClick={() => setShowDiscardConfirm(false)}
+								className="rounded-lg border border-[color:var(--OffBlack)]/15 px-4 py-2 font-[var(--font-inter)] text-sm"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={() => router.push('/Frontend/AdminPanel/FormCreation')}
+								className="rounded-lg bg-red-600 px-4 py-2 font-[var(--font-inter)] text-sm text-white"
+							>
+								Discard
 							</button>
 						</div>
 					</div>

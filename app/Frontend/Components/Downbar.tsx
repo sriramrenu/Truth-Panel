@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 export default function Downbar() {
   const router = useRouter();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-center">
-        <div className="relative w-full max-w-[500  px]">
+    <nav className="fixed inset-x-0 bottom-[-1] z-20 flex justify-center">
+        <div className="relative w-full max-w-[500px]">
           <div className="flex h-20 items-center justify-between rounded-t-[24px] bg-[var(--PBlue)] px-8 pb-3 pt-4 shadow-[0_-4px_18px_rgba(13,22,11,0.15)]">
             <button
               type="button"

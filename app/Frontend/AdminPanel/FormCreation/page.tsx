@@ -177,10 +177,10 @@ export default function FormCreation() {
 
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-28">
+      <div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-28">
         <Navbar />
 
-        <section className="flex flex-1 flex-col px-5 pb-8 pt-2 mt-[10%] ">
+        <section className="flex flex-1 flex-col px-5 pb-8 pt-2 mt-[5%] ">
           
 
           <div className="text-center">
@@ -194,32 +194,19 @@ export default function FormCreation() {
             <button
               type="button"
               onClick={() => router.push('/Frontend/AdminPanel/FormCreation/Builder')}
-              className="mt-8 w-full rounded-2xl bg-[var(--PBlue)] px-6 py-4 font-[var(--font-poppins)] text-base font-medium text-white shadow-[0_12px_24px_rgba(28,105,174,0.28)]"
+              className="mt-8 w-[50%] rounded-2xl bg-[var(--PBlue)] px-6 py-4 font-[var(--font-poppins)] text-base font-medium text-white shadow-[0_12px_24px_rgba(28,105,174,0.28)]"
             >
               Get Started
             </button>
           </div>
 
-          <div className="mt-6 flex-1 space-y-3 overflow-y-auto pb-3">
+          <div className="mt-8 flex-1 space-y-3 overflow-y-auto pb-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-[var(--font-poppins)] text-sm font-medium text-[var(--OffBlack)]/75">
+                {/* <p className="font-[var(--font-poppins)] text-sm font-medium text-[var(--OffBlack)]/75">
                   Saved forms
-                </p>
-
-                <select
-                  value={sortOption}
-                  onChange={(event) => setSortOption(event.target.value as SortOption)}
-                  className="h-8 rounded-lg border border-[color:var(--OffBlack)]/15 bg-white px-2 font-[var(--font-inter)] text-xs text-[var(--OffBlack)] outline-none"
-                  aria-label="Sort saved forms"
-                >
-                  <option value="latest">Latest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="name">Name (A-Z)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
+                </p> */}
+                <div className="flex items-center gap-2">
                 <span className="font-[var(--font-inter)] text-[11px] font-medium uppercase tracking-wide text-[var(--OffBlack)]/65">
                   Show
                 </span>
@@ -234,6 +221,34 @@ export default function FormCreation() {
                   <option value={50}>50</option>
                 </select>
               </div>
+
+                <select
+                  value={sortOption}
+                  onChange={(event) => setSortOption(event.target.value as SortOption)}
+                  className="h-8 rounded-lg border border-[color:var(--OffBlack)]/15 bg-white px-2 font-[var(--font-inter)] text-xs text-[var(--OffBlack)] outline-none"
+                  aria-label="Sort saved forms"
+                >
+                  <option value="latest">Latest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name">Name (A-Z)</option>
+                </select>
+              </div>
+
+              {/* <div className="flex items-center gap-2">
+                <span className="font-[var(--font-inter)] text-[11px] font-medium uppercase tracking-wide text-[var(--OffBlack)]/65">
+                  Show
+                </span>
+                <select
+                  value={formsPerPage}
+                  onChange={(event) => setFormsPerPage(Number(event.target.value))}
+                  className="h-8 rounded-lg border border-[color:var(--OffBlack)]/15 bg-white px-2 font-[var(--font-inter)] text-xs text-[var(--OffBlack)] outline-none"
+                  aria-label="Forms per page"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div> */}
             </div>
 
             {forms.length === 0 ? (

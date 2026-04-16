@@ -151,7 +151,7 @@ export default function FormAnalyticsPage() {
 	if (!isMounted) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-				<div className="mx-auto min-h-screen w-full max-w-[390px]" />
+				<div className="mx-auto min-h-screen w-full max-w-[100%]" />
 			</main>
 		);
 	}
@@ -159,7 +159,7 @@ export default function FormAnalyticsPage() {
 	if (!form) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-28">
+				<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-28">
 					<Navbar />
 					<div className="flex flex-1 items-center justify-center px-4 text-center">
 						<div>
@@ -181,7 +181,7 @@ export default function FormAnalyticsPage() {
 
 	return (
 		<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-28">
+			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-28">
 				<Navbar />
 
 				<section className="flex-1 px-4 pt-4">

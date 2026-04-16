@@ -103,13 +103,13 @@ export default function Forms() {
 
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-28">
+      <div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-28">
         <Navbar />
 
         <section className="flex-1 px-4 pt-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="font-[var(--font-poppins)] text-2xl font-medium text-[var(--OffBlack)]">Forms</h1>
+              <h1 className="font-[var(--font-poppins)] text-2xl font-medium text-[var(--OffBlack)]">Forms Responses</h1>
               
             </div>
 

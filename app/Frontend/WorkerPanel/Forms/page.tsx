@@ -105,7 +105,7 @@ export default function WorkerFormsPage() {
 
 	return (
 		<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-24">
+			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-24">
 				<WNavbar />
 
 				<section className="flex-1 px-4 py-4">

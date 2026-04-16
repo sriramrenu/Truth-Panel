@@ -38,7 +38,7 @@ export default function SuccessPage() {
 
 	return (
 		<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-6 text-center">
+			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col items-center justify-center px-6 text-center">
 				<div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-[color:rgba(28,105,174,0.1)]">
 					<svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 						<path

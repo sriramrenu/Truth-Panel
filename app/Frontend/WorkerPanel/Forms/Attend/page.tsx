@@ -194,7 +194,7 @@ function AttendFormContent() {
 	if (alreadySubmitted) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-5 text-center">
+				<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col items-center justify-center px-5 text-center">
 					<div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--PBlue)]">
 						<span className="text-4xl text-white">✓</span>
 					</div>
@@ -217,7 +217,7 @@ function AttendFormContent() {
 	if (isExpired) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-5 text-center">
+				<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col items-center justify-center px-5 text-center">
 					<div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
 						<span className="text-4xl text-red-500">⏳</span>
 					</div>
@@ -240,7 +240,7 @@ function AttendFormContent() {
 	if (!form || !currentQuestion) {
 		return (
 			<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-				<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center justify-center px-5 text-center">
+				<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col items-center justify-center px-5 text-center">
 					<p className="font-[var(--font-poppins)] text-lg font-medium">Form not found</p>
 					<button
 						type="button"
@@ -256,7 +256,7 @@ function AttendFormContent() {
 
 	return (
 		<main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-			<div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-24">
+			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-24">
 				<header className="bg-white px-4 pb-3 pt-4 shadow-[0_1px_10px_rgba(13,22,11,0.08)]">
 					<div className="flex items-center gap-3">
 						<button

@@ -26,6 +26,15 @@ const getCountFontClass = (value: number) => {
   return 'text-3xl';
 };
 
+const formatNameFromEmail = (email: string) => {
+  const emailPrefix = email.split('@')[0] || 'user';
+  return emailPrefix
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
   const getInitials = (name: string) => {
     if (!name) return 'U';
     return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -34,6 +43,8 @@ const getCountFontClass = (value: number) => {
 export default function DashboardPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const [welcomeName, setWelcomeName] = useState('User');
+  const [currentDateLabel, setCurrentDateLabel] = useState('');
   const [stats, setStats] = useState({ forms: 0, employees: 0 });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeePage, setEmployeePage] = useState(1);
@@ -66,6 +77,27 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setIsMounted(true);
+
+    const userRaw = sessionStorage.getItem('truth_panel_user');
+    if (userRaw) {
+      try {
+        const user = JSON.parse(userRaw);
+        if (user?.email) {
+          setWelcomeName(formatNameFromEmail(user.email));
+        }
+      } catch {
+        // Ignore malformed stored data and keep fallback name.
+      }
+    }
+
+    setCurrentDateLabel(
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+      })
+    );
+
     const loadDashboard = async () => {
       try {
         const { fetchAllSurveys, fetchEmployees } = await import('../../../../utils/api');
@@ -154,31 +186,66 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col pb-28">
+      <div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-28">
         <Navbar />
+        <img
+            src="/BigWave.svg"
+            alt="Dashboard background"
+            className="pointer-events-none absolute inset-0 z-[0] h-[260px] w-full max-w-none object-cover"
+        />
+
+        <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[200px] w-screen pb-9 pt-5">
+
+
+          <div className="relative z-[1] mt-2  mx-auto flex w-full max-w-[100%] items-start justify-between gap-4 px-5">
+
+
+            <div>
+              <h2 className="font-[var(--font-poppins)] text-[32px] leading-[0.9] font-normal text-[var(--OffWhite)] mb-[10px]">
+                Welcome,
+              </h2>
+              <h2 className="font-[var(--font-poppins)] text-[32px] leading-[0.9] font-normal text-[var(--OffWhite)]">
+                {welcomeName}
+              </h2>
+              <p className="mt-4 font-[var(--font-poppins)] text-[14px] font-light text-[var(--OffWhite)]">
+                {currentDateLabel}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push('/Frontend/AdminPanel/FormCreation/Builder')}
+              className="mt-4 flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-xl bg-[var(--SYellow)] shadow-[0_8px_24px_rgba(246,180,63,0.35)]"
+              aria-label="Create form"
+            >
+              <img src="/Plus.svg" alt="Add" className="h-6 w-6" />
+            </button>
+          </div>
+        </section>
 
         <section className="flex-1 space-y-4 px-4 py-4">
           <div className="grid grid-cols-2 gap-3">
-            <article className="rounded-xl bg-white p-4 shadow-sm">
+            <article className="relative rounded-xl bg-white p-4 shadow-sm overflow-hidden">
               <p className="font-[var(--font-poppins)] text-[12px] font-medium text-[var(--PBlue)]">
                 No. of Forms
               </p>
               <p
-                className={`mt-3 font-[var(--font-inter)] ${getCountFontClass(stats.forms)} font-bold text-[var(--OffBlack)]`}
+                className={`mt-1 font-[var(--font-inter)] ${getCountFontClass(stats.forms)} font-bold text-[var(--OffBlack)]`}
               >
                 {stats.forms}
               </p>
+              <img src="/wave.svg" alt="Wave" className="absolute bottom-0 right-0 height-full w-[70%]" />
             </article>
 
-            <article className="rounded-xl bg-white p-4 shadow-sm">
+            <article className="relative rounded-xl bg-white p-4 shadow-sm overflow-hidden">
               <p className="font-[var(--font-poppins)] text-[12px] font-medium text-[var(--PBlue)]">
                 No. of Employees
               </p>
               <p
-                className={`mt-3 font-[var(--font-inter)] ${getCountFontClass(stats.employees)} font-bold text-[var(--OffBlack)]`}
+                className={`mt-1 font-[var(--font-inter)] ${getCountFontClass(stats.employees)} font-bold text-[var(--OffBlack)]`}
               >
                 {stats.employees}
               </p>
+              <img src="/wave.svg" alt="Wave" className="absolute bottom-0 right-0 height-full w-[70%]" />
             </article>
           </div>
 

@@ -79,9 +79,7 @@ export default function WorkerFormsPage() {
 						endTime: s.end_time || null,
 						questions: s.Questions || [],
 					}));
-					setForms(normalized);
-
-					// Check which surveys the worker already responded to
+					setForms(normalized);
 					const submittedIds: string[] = [];
 					for (const survey of normalized) {
 						try {

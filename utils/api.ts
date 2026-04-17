@@ -1,9 +1,3 @@
-/**
- * Truth Panel - Express API Frontend Fetch Utilities
- * This file provides all the connection logic to link the Next.js frontend pages
- * to our Express.js backend running on localhost:5000.
- */
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
 
 const isSurveyExpired = (endTime?: string | null) => {
@@ -13,10 +7,9 @@ const isSurveyExpired = (endTime?: string | null) => {
     return Date.now() > parsed;
 };
 
-// Utility to grab the user's JWT standardly for requests
 const getAuthHeaders = async () => {
-    // Note: Assuming your frontend sets truth_panel_token or uses Supabase cookies natively.
-    // The exact token retrieval depends on your final Auth setup in the frontend team.
+
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('supabase_token') : null;
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -25,10 +18,37 @@ const getAuthHeaders = async () => {
     return headers;
 };
 
+
+const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    let response = await fetch(url, options);
+
+    if (response.status === 401 && typeof window !== 'undefined') {
+        const refreshToken = localStorage.getItem('truth_panel_refresh_token');
+        if (refreshToken) {
+            const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+            if (refreshRes.ok) {
+                const data = await refreshRes.json();
+                if (data.session?.access_token) {
+
+                    localStorage.setItem('supabase_token', data.session.access_token);
+
+                    const newHeaders = await getAuthHeaders();
+                    return fetch(url, { ...options, headers: { ...options.headers, ...newHeaders } });
+                }
+            }
+        }
+    }
+    return response;
+};
+
 /* --- SURVEYS & SESSIONS --- */
 
 export const createSurvey = async (title: string, description: string, questions: any[], start_time?: string, end_time?: string, points_per_question?: number) => {
-    const response = await fetch(`${API_BASE_URL}/surveys`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys`, {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ title, description, questions, start_time, end_time, points_per_question })
@@ -37,14 +57,14 @@ export const createSurvey = async (title: string, description: string, questions
 };
 
 export const fetchAllSurveys = async () => {
-    const response = await fetch(`${API_BASE_URL}/surveys`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys`, {
         headers: await getAuthHeaders(),
     });
     return response.json();
 };
 
 export const deleteSurveyAPI = async (surveyId: string) => {
-    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys/${surveyId}`, {
         method: 'DELETE',
         headers: await getAuthHeaders(),
     });
@@ -52,7 +72,7 @@ export const deleteSurveyAPI = async (surveyId: string) => {
 };
 
 export const startLiveSession = async (surveyId: string) => {
-    const response = await fetch(`${API_BASE_URL}/surveys/session`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys/session`, {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ survey_id: surveyId })
@@ -61,7 +81,7 @@ export const startLiveSession = async (surveyId: string) => {
 };
 
 export const fetchActiveSession = async (surveyId: string, endTime?: string | null) => {
-    // Avoid requesting an endpoint that intentionally returns 403 for expired surveys.
+
     if (isSurveyExpired(endTime)) {
         return {
             success: false,
@@ -70,7 +90,7 @@ export const fetchActiveSession = async (surveyId: string, endTime?: string | nu
         };
     }
 
-    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/active-session`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys/${surveyId}/active-session`, {
         headers: await getAuthHeaders(),
     });
 
@@ -85,7 +105,7 @@ export const fetchActiveSession = async (surveyId: string, endTime?: string | nu
 /* --- RESPONSES --- */
 
 export const submitUserResponse = async (sessionId: string, questionId: string, answerValue: string) => {
-    const response = await fetch(`${API_BASE_URL}/responses`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/responses`, {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ session_id: sessionId, question_id: questionId, answer_value: answerValue })
@@ -93,22 +113,26 @@ export const submitUserResponse = async (sessionId: string, questionId: string, 
     return response.json();
 };
 
-export const checkUserSubmission = async (sessionId: string) => {
-    const response = await fetch(`${API_BASE_URL}/responses/check/${sessionId}`, {
+export const checkUserSubmission = async (sessionId?: string, surveyId?: string) => {
+    let url = `${API_BASE_URL}/responses/check/${sessionId}`;
+    if (surveyId) {
+        url = `${API_BASE_URL}/responses/check-survey?surveyId=${surveyId}`;
+    }
+    const response = await fetchWithAuth(url, {
         headers: await getAuthHeaders(),
     });
     return response.json();
 };
 
 export const fetchSessionAnalytics = async (sessionId: string) => {
-    const response = await fetch(`${API_BASE_URL}/responses/${sessionId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/responses/${sessionId}`, {
         headers: await getAuthHeaders()
     });
     return response.json();
 };
 
 export const fetchSurveyAnalytics = async (surveyId: string) => {
-    const response = await fetch(`${API_BASE_URL}/responses/survey/${surveyId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/responses/survey/${surveyId}`, {
         headers: await getAuthHeaders()
     });
     return response.json();
@@ -117,14 +141,14 @@ export const fetchSurveyAnalytics = async (surveyId: string) => {
 /* --- REWARDS & WALLET --- */
 
 export const fetchWalletHistory = async () => {
-    const response = await fetch(`${API_BASE_URL}/rewards/wallet`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/rewards/wallet`, {
         headers: await getAuthHeaders()
     });
     return response.json();
 };
 
 export const redeemWalletPoints = async (rewardTitle: string, rewardCost: number) => {
-    const response = await fetch(`${API_BASE_URL}/rewards/redeem`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/rewards/redeem`, {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ reward_title: rewardTitle, reward_cost: rewardCost })
@@ -133,7 +157,7 @@ export const redeemWalletPoints = async (rewardTitle: string, rewardCost: number
 };
 
 export const transferWalletPoints = async (recipient: string, amount: number) => {
-    const response = await fetch(`${API_BASE_URL}/rewards/transfer`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/rewards/transfer`, {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ recipient, amount })
@@ -144,14 +168,14 @@ export const transferWalletPoints = async (recipient: string, amount: number) =>
 /* --- ADMIN RESOURCES --- */
 
 export const fetchEmployees = async () => {
-    const response = await fetch(`${API_BASE_URL}/admin/employees`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/admin/employees`, {
         headers: await getAuthHeaders()
     });
     return response.json();
 };
 
 export const createEmployee = async (email: string, password?: string) => {
-    const response = await fetch(`${API_BASE_URL}/admin/employee`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/admin/employee`, {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({ email, password: password || '12345678' })
@@ -162,7 +186,7 @@ export const createEmployee = async (email: string, password?: string) => {
 /* --- AUTHENTICATION & PROFILE --- */
 
 export const loginUser = async (email: string, password?: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

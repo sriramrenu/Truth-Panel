@@ -31,9 +31,7 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [selectedReward, setSelectedReward] = useState<typeof REWARDS_CATALOG[0] | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
-  
-  // Transfer state
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [showTransferSheet, setShowTransferSheet] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
   const [transferRecipient, setTransferRecipient] = useState("");

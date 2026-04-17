@@ -42,8 +42,7 @@ export default function FormPreviewPage() {
 				});
 				setCurrentIndex(parsed.currentQuestionIndex || 0);
 			}
-		} catch {
-			// corrupted draft
+		} catch {
 		}
 	}, []);
 
@@ -226,12 +225,8 @@ export default function FormPreviewPage() {
 							try {
 								const draft = sessionStorage.getItem('truth_panel_draft');
 								if (draft) {
-									const parsed = JSON.parse(draft);
-									
-									// 1. Dynamically import our API utilities
-									const { createSurvey, startLiveSession } = await import('../../../../../utils/api');
-									
-									// 2. Hit the Express Backend to insert the Survey into Postgres
+									const parsed = JSON.parse(draft);
+									const { createSurvey, startLiveSession } = await import('../../../../../utils/api');
 									const surveyRes = await createSurvey(
 										parsed.title || 'Untitled', 
 										parsed.description || '', 
@@ -242,15 +237,12 @@ export default function FormPreviewPage() {
 									);
 									
 									
-									if (surveyRes.success && surveyRes.survey) {
-										// 3. Immediately tell the backend to generate a 4-digit PIN session!
+									if (surveyRes.success && surveyRes.survey) {
 										const sessionRes = await startLiveSession(surveyRes.survey.id);
 										
 										if (sessionRes?.success && sessionRes.session?.pin_code) {
 											alert(`Survey Created Successfully!\n\nYour Live Session PIN is: ${sessionRes.session.pin_code}\n\nShare this PIN with your employees so they can join!`);
-										}
-
-										// Clean up local drafting
+										}
 										sessionStorage.removeItem('truth_panel_draft');
 									} else {
 										console.error("Survey creation failed on backend", surveyRes.error);

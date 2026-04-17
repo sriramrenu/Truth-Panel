@@ -120,9 +120,7 @@ function VerifyOTPContent() {
 
       setStep('success');
       setNewPassword('');
-      setConfirmPassword('');
-      
-      // Redirect to login after 3 seconds
+      setConfirmPassword('');
       setTimeout(() => {
         sessionStorage.removeItem('reset_email');
         router.push('/Frontend/Login');

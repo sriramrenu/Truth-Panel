@@ -51,9 +51,7 @@ interface FormResponse {
 const PIE_COLORS = ['#1C69AE', '#f5c518', '#4CAF50', '#E91E63', '#9C27B0', '#FF5722'];
 
 const getPieColor = (index: number) => {
-	if (index < PIE_COLORS.length) return PIE_COLORS[index];
-
-	// Generate additional distinct colors using golden-angle hue steps.
+	if (index < PIE_COLORS.length) return PIE_COLORS[index];
 	const hue = Math.round((index * 137.508) % 360);
 	return `hsl(${hue}, 68%, 52%)`;
 };
@@ -85,9 +83,7 @@ export default function FormAnalyticsPage() {
 
 		const loadData = async () => {
 			try {
-				const { fetchAllSurveys, fetchSurveyAnalytics } = await import('../../../../../utils/api');
-				
-				// Load Survey from backend
+				const { fetchAllSurveys, fetchSurveyAnalytics } = await import('../../../../../utils/api');
 				const surveysRes = await fetchAllSurveys();
 				if (surveysRes?.success) {
 					const found = (surveysRes.data || []).find((s: any) => s.id === formId);
@@ -105,9 +101,7 @@ export default function FormAnalyticsPage() {
 							})),
 						});
 					}
-				}
-				
-				// Load aggregated responses spanning sessions from backend 
+				}
 				const analyticsRes = await fetchSurveyAnalytics(formId);
 				if (analyticsRes?.success && Array.isArray(analyticsRes.data)) {
                     const groupedResponses: Record<string, FormResponse> = {};

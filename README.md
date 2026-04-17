@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Truth Panel
 
-## Getting Started
+Truth Panel is a unified application comprising an Express.js backend API and a powerful Next.js React frontend. The application utilizes PostgreSQL for data persistence and a Redis-backed background job queue (via BullMQ).
 
-First, run the development server:
+## Architecture
+The application has recently migrated away from serverless Vercel deployments and has been containerized natively for **Northflank**.
+We employ a **Unified Container Strategy**:
+- 🐳 **`Dockerfile`**: Builds a single, unified Node 20 alpine image.
+- 🚀 **`start.sh`**: Acts as the entry point script, launching the Express backend on `5000` (background) while spinning up the Next.js frontend on `3000` (foreground).
+- 🔀 **Next.js Rewrites**: The frontend transparently intercepts API requests (`/api/...`) and routes them locally pointing to your backend so that you avoid CORS issues entirely and only expose a single port.
+
+## Authentication
+The platform securely utilizes a dual JWT token system. The server mints an **Access Token** (15-minute expiry) and a **Refresh Token** (7-day expiry). 
+
+The frontend gracefully intercepts any 401 Unauthorized errors from the API due to token expiration, redeems a new access token via `/api/auth/refresh`, and transparently replays the original request on behalf of the user.
+
+## Running Locally
+
+To work on this repository locally, you should be spinning up both services parallelly:
 
 ```bash
+# 1. Install Dependencies
+npm install
+
+# 2. Setup your .env file
+# Ensure you have DATABASE_URL, REDIS_URL, BREVO configuration, JWT_SECRET, etc.
+# Check out .env.example (or the provided .env) for details.
+
+# 3. Start Backend manually
+npm run dev:backend
+
+# 4. In a separate terminal, Start Frontend
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Alternatively, you can test the production Docker layout right away:
+```bash
+docker build -t truth-panel .
+docker run -p 3000:3000 truth-panel
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Hosted Deployment (Northflank)
+1. Add this repository directly to Northflank as a Service.
+2. Select your `Dockerfile` as the build context.
+3. Configure the container to bind to port **3000** over HTTP.
+4. Supply your runtime Secrets/Variables via the Northflank environment panel.

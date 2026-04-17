@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
-const supabase = require('../config/supabaseClient');
+const DbService = require('../config/dbConfig');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-const otpStore = new Map();
-
-// Configure Brevo Transporter
+const otpStore = new Map();
 const transporter = nodemailer.createTransport({
     host: process.env.BREVO_SMTP_SERVER || 'smtp-relay.brevo.com',
     port: parseInt(process.env.BREVO_SMTP_PORT || '587'),
@@ -21,29 +21,17 @@ const sendOTP = async (req, res) => {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        // 1. Check if user exists in the database
-        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError) {
-            console.error('Error checking user existence:', listError);
-            return res.status(500).json({ error: 'Internal server error checking user' });
-        }
-
-        const user = usersData.users.find(u => u.email === email.trim().toLowerCase());
-        if (!user) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 LIMIT 1', [normalizedEmail]);
+        if (rows.length === 0) {
             return res.status(404).json({ success: false, error: "mail doesn't exists" });
-        }
-
-        // 2. Generate 6 digit OTP
+        }
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
-
-        // 3. Store OTP
-        otpStore.set(email, { otp, expiresAt });
-
-        // 4. Send Email
+        const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+        otpStore.set(normalizedEmail, { otp, expiresAt });
         const mailOptions = {
             from: '"Truth Panel" <r.sriramrenu@gmail.com>',
-            to: email,
+            to: normalizedEmail,
             subject: 'Your Password Reset OTP',
             text: `Your OTP for password reset is ${otp}. It is valid for 2 minutes.`,
             html: `<b>Your OTP for password reset is ${otp}.</b> It is valid for 2 minutes.`
@@ -53,7 +41,6 @@ const sendOTP = async (req, res) => {
 
         return res.status(200).json({ success: true, message: 'OTP sent successfully' });
     } catch (error) {
-        console.error('Error sending OTP:', error);
         return res.status(500).json({ error: 'Failed to send OTP' });
     }
 };
@@ -64,32 +51,29 @@ const verifyOTP = async (req, res) => {
         if (!email || !otp) {
             return res.status(400).json({ error: 'Email and OTP are required' });
         }
-
-        const storedData = otpStore.get(email);
+        
+        const normalizedEmail = email.trim().toLowerCase();
+        const storedData = otpStore.get(normalizedEmail);
+        
         if (!storedData) {
             return res.status(400).json({ error: 'OTP not requested or expired' });
         }
 
         if (Date.now() > storedData.expiresAt) {
-            otpStore.delete(email);
+            otpStore.delete(normalizedEmail);
             return res.status(400).json({ error: 'OTP has expired' });
         }
 
         if (storedData.otp !== String(otp)) {
             return res.status(400).json({ error: 'Invalid OTP' });
-        }
+        }
+        otpStore.delete(normalizedEmail);
 
-        // OTP valid, remove it
-        otpStore.delete(email);
-
-        // In a real app we might return a short-lived reset token here
         return res.status(200).json({ success: true, message: 'OTP verified successfully' });
     } catch (error) {
-        console.error('Error verifying OTP:', error);
         return res.status(500).json({ error: 'Failed to verify OTP' });
     }
 };
-
 
 const resetPassword = async (req, res) => {
     try {
@@ -98,38 +82,18 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ error: 'Email and new password are required' });
         }
 
-        // In order to update a user's password securely from the backend without their old password or a session,
-        // we MUST use the Supabase Admin API which requires the Service Role Key.
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            console.error('Missing SUPABASE_SERVICE_ROLE_KEY in environment variables.');
-            return res.status(500).json({ error: 'Server misconfiguration: Service Role Key is required for password resets.' });
-        }
-
-        // 1. Fetch user by email to get their ID using admin.listUsers
-        const { data, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError) {
-            console.error('Error listing users (check service_role key):', listError);
-            return res.status(500).json({ error: 'Failed to access authentication records' });
-        }
-
-        const user = data.users.find(u => u.email === email);
-        if (!user) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 LIMIT 1', [normalizedEmail]);
+        if (rows.length === 0) {
             return res.status(404).json({ error: 'No user found with this email' });
         }
 
-        // 2. Update the user password securely
-        const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-            password: newPassword
-        });
-
-        if (updateError) {
-            console.error('Error updating password:', updateError);
-            return res.status(500).json({ error: 'Failed to update user password in database' });
-        }
+        const saltRounds = 10;
+        const password_hash = await bcrypt.hash(newPassword, saltRounds);
+        await DbService.query('UPDATE "Users" SET password_hash = $1 WHERE email = $2', [password_hash, normalizedEmail]);
         
         return res.status(200).json({ success: true, message: 'Password reset successfully' });
     } catch (error) {
-        console.error('Error resetting password:', error);
         return res.status(500).json({ error: 'Failed to reset password' });
     }
 };
@@ -137,16 +101,40 @@ const resetPassword = async (req, res) => {
 const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return res.status(401).json({ error: error.message });
-        
-        const userRole = data.user.user_metadata?.role || 'worker';
-        const userName = data.user.user_metadata?.name || data.user.email;
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const { rows } = await DbService.query('SELECT * FROM "Users" WHERE email = $1 LIMIT 1', [normalizedEmail]);
+        const user = rows[0];
+
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid Email or Password' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid Email or Password' });
+        }
+
+        const JWT_SECRET = process.env.JWT_SECRET || 'you_should_set_a_jwt_secret_in_env_file';
+        const accessToken = jwt.sign(
+            { id: user.id, email: user.email, role: user.role, name: user.name }, 
+            JWT_SECRET, 
+            { expiresIn: '15m' }
+        );
+
+        const refreshToken = jwt.sign(
+            { id: user.id }, 
+            JWT_SECRET, 
+            { expiresIn: '7d' }
+        );
         
         res.status(200).json({
             success: true,
-            session: data.session,
-            user: { email: data.user.email, name: userName, role: userRole }
+            session: { 
+                access_token: accessToken,
+                refresh_token: refreshToken
+            },
+            user: { email: user.email, name: user.name, role: user.role }
         });
     } catch (e) { next(e); }
 };
@@ -154,12 +142,46 @@ const login = async (req, res, next) => {
 const getProfile = (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
-    const userRole = user.user_metadata?.role || 'worker';
-    const userName = user.user_metadata?.name || user.email;
     return res.status(200).json({ 
         success: true, 
-        user: { email: user.email, name: userName, role: userRole } 
+        user: { email: user.email, name: user.name, role: user.role } 
     });
+};
+
+const refreshToken = async (req, res, next) => {
+    try {
+        const { refresh_token } = req.body;
+        if (!refresh_token) {
+            return res.status(401).json({ error: 'Refresh token is required' });
+        }
+
+        const JWT_SECRET = process.env.JWT_SECRET || 'you_should_set_a_jwt_secret_in_env_file';
+        
+        jwt.verify(refresh_token, JWT_SECRET, async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({ error: 'Invalid or expired refresh token' });
+            }
+
+            const { rows } = await DbService.query('SELECT * FROM "Users" WHERE id = $1 LIMIT 1', [decoded.id]);
+            const user = rows[0];
+            if (!user) {
+                return res.status(401).json({ error: 'User no longer exists' });
+            }
+
+            const accessToken = jwt.sign(
+                { id: user.id, email: user.email, role: user.role, name: user.name }, 
+                JWT_SECRET, 
+                { expiresIn: '15m' }
+            );
+
+            res.status(200).json({
+                success: true,
+                session: { access_token: accessToken }
+            });
+        });
+    } catch (e) {
+        next(e);
+    }
 };
 
 module.exports = {
@@ -167,5 +189,6 @@ module.exports = {
     verifyOTP,
     resetPassword,
     login,
-    getProfile
+    getProfile,
+    refreshToken
 };

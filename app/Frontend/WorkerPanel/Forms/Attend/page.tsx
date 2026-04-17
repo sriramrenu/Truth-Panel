@@ -57,15 +57,12 @@ function AttendFormContent() {
 		const loadSurvey = async () => {
 			try {
 				const { fetchAllSurveys, fetchActiveSession } = await import('../../../../../utils/api');
-				let surveyEndTime: string | null = null;
-				
-				// Fetch the survey details from backend
+				let surveyEndTime: string | null = null;
 				const surveysRes = await fetchAllSurveys();
 				if (surveysRes?.success) {
 					const found = surveysRes.data?.find((s: any) => s.id === formId);
 					if (found) {
-						surveyEndTime = found.end_time || null;
-						// Normalize backend Questions structure to local shape
+						surveyEndTime = found.end_time || null;
 						setForm({
 							id: found.id,
 							title: found.title,
@@ -80,14 +77,10 @@ function AttendFormContent() {
 							})),
 						});
 					}
-				}
-				
-				// Auto-resolve the active live session for this survey
+				}
 				const sessionRes = await fetchActiveSession(formId, surveyEndTime);
 				if (sessionRes?.success && sessionRes.session?.id) {
-					setSessionId(sessionRes.session.id);
-
-					// Check if this worker already submitted for this session
+					setSessionId(sessionRes.session.id);
 					const { checkUserSubmission } = await import('../../../../../utils/api');
 					const checkRes = await checkUserSubmission(sessionRes.session.id);
 					if (checkRes?.already_submitted) setAlreadySubmitted(true);
@@ -173,9 +166,7 @@ function AttendFormContent() {
 		
 		setIsSubmitting(true);
 		try {
-			const { submitUserResponse } = await import('../../../../../utils/api');
-			
-			// Submit each answer to the backend individually
+			const { submitUserResponse } = await import('../../../../../utils/api');
 			for (const question of form.questions) {
 				const rawAnswer = answers[question.id];
 				const answerValue = Array.isArray(rawAnswer) 

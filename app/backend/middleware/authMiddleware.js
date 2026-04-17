@@ -1,7 +1,7 @@
-const supabase = require('../config/supabaseClient');
+const jwt = require('jsonwebtoken');
 
 /**
- * Express middleware to verify JWT tokens from Supabase Auth.
+ * Express middleware to verify custom JWT tokens.
  * Expects the 'Authorization: Bearer <TOKEN>' header.
  */
 const verifyAuth = async (req, res, next) => {
@@ -16,21 +16,19 @@ const verifyAuth = async (req, res, next) => {
         }
 
         const token = authHeader.split(' ')[1];
+        const JWT_SECRET = process.env.JWT_SECRET || 'you_should_set_a_jwt_secret_in_env_file';
+        jwt.verify(token, JWT_SECRET, (err, decoded) => {
+            if (err) {
+                console.error('JWT Validation Error:', err.message);
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized: Token failed validation.' 
+                });
+            }
+            req.user = decoded;
+            next();
+        });
 
-        // Validates token against Supabase
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-
-        if (error || !user) {
-            console.error('Supabase Auth Validation Error:', error?.message);
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Unauthorized: Token failed validation.' 
-            });
-        }
-
-        // Attach user info to request context for downstream controllers
-        req.user = user;
-        next();
     } catch (err) {
         console.error('Authentication Middleware Exception:', err);
         res.status(500).json({ 

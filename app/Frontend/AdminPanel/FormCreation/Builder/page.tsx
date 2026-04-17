@@ -54,9 +54,7 @@ const getTypeLabel = (type: QuestionType) => {
 	if (type === 'multiple_choice') return 'Multiple Choice';
 	if (type === 'checkboxes') return 'Checkboxes';
 	return 'Short Text';
-};
-
-// Forms are loaded from backend API; Builder uses sessionStorage draft only
+};
 
 export default function FormBuilderPage() {
 	const router = useRouter();
@@ -83,8 +81,7 @@ export default function FormBuilderPage() {
 		optionRefs.current = [];
 	}, [currentQuestionIndex]);
 
-	useEffect(() => {
-		// Try to load from sessionStorage draft
+	useEffect(() => {
 		const draft = sessionStorage.getItem('truth_panel_draft');
 		if (draft) {
 			try {
@@ -99,19 +96,15 @@ export default function FormBuilderPage() {
 					parsed.endDateTime > parsed.startDateTime
 				) {
 					setSettingsCompleted(true);
-				}
-
-				// Restore builder data only when questions exist
+				}
 				if (parsed.questions && parsed.questions.length > 0) {
 					setFormId(parsed.id || createId());
 					setTitle(parsed.title || '');
-					setDescription(parsed.description || '');
-					// Ensure all questions are editable
+					setDescription(parsed.description || '');
 					setQuestions(parsed.questions.map((q: FormQuestion) => ({ ...q, isEditable: true })));
 					setCurrentQuestionIndex(parsed.currentQuestionIndex || 0);
 				}
-			} catch {
-				// Corrupted draft, use defaults
+			} catch {
 			}
 		}
 	}, []);

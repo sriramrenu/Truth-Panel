@@ -16,9 +16,7 @@ export default function Dashboard() {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const { fetchWalletHistory, fetchAllSurveys, fetchActiveSession, checkUserSubmission } = await import('../../../../utils/api');
-        
-        // Fetch wallet and surveys concurrently
+        const { fetchWalletHistory, fetchAllSurveys, fetchActiveSession, checkUserSubmission } = await import('../../../../utils/api');
         const [walletRes, surveysRes] = await Promise.all([
           fetchWalletHistory(),
           fetchAllSurveys()
@@ -27,38 +25,36 @@ export default function Dashboard() {
         if (walletRes?.success) setPoints(walletRes.total_points || 0);
         
         if (surveysRes?.success) {
-          const allSurveys = surveysRes.data || [];
-          // Negotiate expired surveys actively out of view
+          const allSurveys = surveysRes.data || [];
           const activeSurveys = allSurveys.filter((s: any) => {
               if (!s.end_time) return true;
               return new Date() < new Date(s.end_time);
           });
           
-          setSurveys(activeSurveys);
-
-          // Evaluate pending forms concurrently instead of sequentially
-          const pendingPromises = activeSurveys.map(async (s: any) => {
+          setSurveys(activeSurveys);
+          const categorizedPromises = activeSurveys.map(async (s: any) => {
             try {
+              const checkRes = await checkUserSubmission(undefined, s.id);
+              if (checkRes?.already_submitted) {
+                return { ...s, status: 'completed' };
+              }
+              
               const sessionRes = await fetchActiveSession(s.id, s.end_time);
               if (sessionRes?.success && sessionRes.session?.id) {
-                const checkRes = await checkUserSubmission(sessionRes.session.id);
-                if (!checkRes?.already_submitted) {
-                    return s;
-                }
-              } else {
-                return s; // Active and no session means pending
+                return { ...s, status: 'active', sessionId: sessionRes.session.id };
               }
-            } catch { 
-                return s;
+              
+              return { ...s, status: 'unavailable' };
+            } catch {
+              return { ...s, status: 'error' };
             }
-            return null; // Not pending
           });
 
-          const results = await Promise.all(pendingPromises);
-          const pendingArray = results.filter(s => s !== null);
-
+          const results = await Promise.all(categorizedPromises);
+          const pendingArray = results.filter(s => s.status === 'active');
+          
           setPendingFormsCount(pendingArray.length);
-          setPendingSurveys(pendingArray);
+          setPendingSurveys(results);
         }
       } catch (err) {
         console.error('Failed to load dashboard', err);
@@ -86,10 +82,12 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-gray-50 flex flex-col items-center justify-center"
+          className={`bg-white rounded-xl shadow-sm p-4 border border-gray-50 flex flex-col items-center justify-center transition-all ${pendingFormsCount > 0 ? 'ring-2 ring-[#fcc12d]/30' : ''}`}
         >
-          <span className="text-xs text-[#1e6cb3] font-semibold">Pending Forms</span>
-          <span className="text-3xl font-bold text-gray-800 mt-2">{pendingFormsCount}</span>
+          <span className="text-xs text-[#1e6cb3] font-semibold">Active Pending</span>
+          <span className={`text-3xl font-bold mt-2 ${pendingFormsCount > 0 ? 'text-[#fcc12d]' : 'text-gray-800'}`}>
+            {pendingFormsCount}
+          </span>
         </motion.div>
       </div>
 
@@ -143,11 +141,11 @@ export default function Dashboard() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[10px] text-gray-500 font-medium">Completion</span>
-              <span className="text-4xl font-bold text-gray-800">
+              <span className="text-[10px] text-gray-500 font-medium">Status</span>
+              <span className={`text-4xl font-bold ${pendingFormsCount > 0 ? 'text-[#fcc12d]' : 'text-[#1e6cb3]'}`}>
                   {surveys.length > 0 ? Math.round(((surveys.length - pendingFormsCount) / surveys.length) * 100) : 0}%
               </span>
-              <span className="text-[9px] text-gray-400 mt-1">Success rate</span>
+              <span className="text-[9px] text-gray-400 mt-1">{pendingFormsCount > 0 ? 'Action required' : 'All caught up'}</span>
             </div>
           </div>
         </div>
@@ -179,17 +177,33 @@ export default function Dashboard() {
 
         <div className="space-y-3">
           {pendingSurveys.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 font-medium text-sm">No pending surveys.</div>
+            <div className="p-4 text-center text-gray-500 font-medium text-sm">No surveys available.</div>
           ) : (
             pendingSurveys.map((survey: any) => (
-              <div key={survey.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer bg-[#f4fbfa]/30">
+              <div key={survey.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg bg-white shadow-sm">
                 <div className="flex flex-col">
-                  <span className="font-semibold text-gray-800">{survey.title}</span>
-                  <span className="text-xs text-gray-500 mt-1">{"Live Event"}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">{survey.title}</span>
+                    {survey.status === 'completed' ? (
+                      <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Completed</span>
+                    ) : survey.status === 'active' ? (
+                      <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Available</span>
+                    ) : (
+                      <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold">Ended</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500 mt-1">Live Event</span>
                 </div>
-                <Link href={`/Frontend/WorkerPanel/Forms/Attend?id=${survey.id}`} className="px-4 py-1.5 border border-[#1e6cb3] text-[#1e6cb3] rounded-md text-sm font-medium hover:bg-[#1e6cb3] hover:text-white transition-colors block text-center">
-                  Start
-                </Link>
+                
+                {survey.status === 'active' ? (
+                  <Link href={`/Frontend/WorkerPanel/Forms/Attend?id=${survey.id}`} className="px-4 py-1.5 border border-[#1e6cb3] text-[#1e6cb3] rounded-md text-sm font-medium hover:bg-[#1e6cb3] hover:text-white transition-colors block text-center">
+                    Start
+                  </Link>
+                ) : (
+                  <button disabled className="px-4 py-1.5 border border-gray-200 text-gray-400 rounded-md text-sm font-medium cursor-not-allowed">
+                    {survey.status === 'completed' ? 'Finished' : 'Closed'}
+                  </button>
+                )}
               </div>
             ))
           )}

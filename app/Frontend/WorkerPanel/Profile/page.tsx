@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
-import Downbar from '../../Components/Downbar';
-import Navbar from '../../Components/Navbar';
+import WDownbar from '../../Components/WDownbar';
+import WNavbar from '../../Components/WNavbar';
 import { fetchUserProfile } from '../../../../utils/api';
 
 export default function Profile() {
@@ -43,7 +43,7 @@ export default function Profile() {
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">
       <div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-28">
-        <Navbar />
+        <WNavbar />
 
         <section className="flex-1 px-4 pt-4">
           <button
@@ -99,7 +99,7 @@ export default function Profile() {
         </section>
       </div>
 
-      <Downbar />
+      <WDownbar />
     </main>
   );
 }

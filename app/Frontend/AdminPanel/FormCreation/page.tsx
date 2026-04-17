@@ -83,52 +83,43 @@ export default function FormCreation() {
         const res = await fetchSurveyAnalytics(surveyId);
         
         if (res?.success && res.data && res.data.length > 0) {
-            const rawData = res.data;
-
-            // Extract unique question context to dynamically formulate CSV headers
+            const rawData = res.data;
             const questionMap = new Map<string, string>();
             rawData.forEach((item: any) => {
                 if (item.question_id && item.Questions?.question_text) {
                     questionMap.set(item.question_id, item.Questions.question_text);
                 }
-            });
-
-            // Map base architecture headers
-            const headers = ['Session ID', 'User ID', 'Submitted At', ...Array.from(questionMap.values())];
-
-            // Safely iterate submissions pivoted into row definitions by Session
-            const sessions = new Map<string, any>();
+            });
+            const headers = ['Session ID', 'User ID', 'Submitted At', ...Array.from(questionMap.values())];
+            const submissions = new Map<string, any>();
             rawData.forEach((item: any) => {
-                if (!sessions.has(item.session_id)) {
-                    sessions.set(item.session_id, {
+                const subKey = `${item.user_id}_${item.session_id}`;
+                if (!submissions.has(subKey)) {
+                    submissions.set(subKey, {
                         session_id: item.session_id,
                         user_id: item.user_id || 'Anonymous',
                         submitted_at: new Date(item.created_at || Date.now()).toLocaleString(),
                         answers: {}
                     });
                 }
-                sessions.get(item.session_id).answers[item.question_id] = item.answer || '';
-            });
-
-            // Stitch columns aggressively escaping trailing quotations safely
+                submissions.get(subKey).answers[item.question_id] = item.answer || '';
+            });
             let csvContent = headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n';
 
-            sessions.forEach((sessionData) => {
+            submissions.forEach((subData) => {
                 const row = [
-                    `"${sessionData.session_id}"`,
-                    `"${sessionData.user_id}"`,
-                    `"${sessionData.submitted_at}"`
+                    `"${subData.session_id}"`,
+                    `"${subData.user_id}"`,
+                    `"${subData.submitted_at}"`
                 ];
 
                 questionMap.forEach((_, qId) => {
-                    const answer = sessionData.answers[qId] || '';
+                    const answer = subData.answers[qId] || '';
                     row.push(`"${String(answer).replace(/"/g, '""')}"`);
                 });
 
                 csvContent += row.join(',') + '\n';
-            });
-
-            // DOM hook browser generation natively emitting CSV object
+            });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -148,8 +139,7 @@ export default function FormCreation() {
   };
 
   useEffect(() => {
-    sessionStorage.removeItem('truth_panel_draft');
-    // Fetch live surveys from Express API
+    sessionStorage.removeItem('truth_panel_draft');
     const loadForms = async () => {
       try {
         const { fetchAllSurveys } = await import('../../../../utils/api');

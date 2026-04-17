@@ -85,8 +85,7 @@ export default function DashboardPage() {
         if (user?.email) {
           setWelcomeName(formatNameFromEmail(user.email));
         }
-      } catch {
-        // Ignore malformed stored data and keep fallback name.
+      } catch {
       }
     }
 
@@ -103,9 +102,7 @@ export default function DashboardPage() {
         const { fetchAllSurveys, fetchEmployees } = await import('../../../../utils/api');
         
         let surveysCount = 0;
-        let empsCount = 0;
-        
-        // Fetch surveys and employees concurrently
+        let empsCount = 0;
         const [res, empRes] = await Promise.all([
           fetchAllSurveys(),
           fetchEmployees()
@@ -137,8 +134,7 @@ export default function DashboardPage() {
     if (!selectedForm || surveysRaw.length === 0 || stats.employees === 0) return;
      
     const matchedSurvey = surveysRaw.find(s => (s.title || 'Untitled') === selectedForm);
-    if (matchedSurvey) {
-        // Calculate distinct worker submissions leveraging Supabase nested relational schema
+    if (matchedSurvey) {
         const uniqueUsers = new Set();
         (matchedSurvey.Sessions || []).forEach((session: any) => {
             (session.Responses || []).forEach((response: any) => {

@@ -13,7 +13,7 @@ ENV NODE_ENV=production
 
 RUN npm run build
 
-RUN chmod +x start.sh
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 
 EXPOSE 3000
 

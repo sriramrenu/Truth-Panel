@@ -81,7 +81,7 @@ const getSurveyResponses = async (req, res, next) => {
 const checkUserSubmission = async (req, res, next) => {
     try {
         const { sessionId } = req.params;
-        const { surveyId } = req.query; // Support survey-wide check from query param
+        const { surveyId } = req.query;
         const userId = req.user?.id;
 
         if (!userId) {
@@ -91,10 +91,10 @@ const checkUserSubmission = async (req, res, next) => {
         let queryText = '';
         let queryParams = [];
 
-        if (surveyId) {
+        if (surveyId) {
             queryText = `
                 SELECT id FROM "Responses" 
-                WHERE user_id = $1 AND session_id IN (SELECT id FROM "Sessions" WHERE survey_id = $2)
+                WHERE user_id = $1::uuid AND session_id IN (SELECT id FROM "Sessions" WHERE survey_id = $2::uuid)
                 LIMIT 1
             `;
             queryParams = [userId, surveyId];
@@ -102,7 +102,7 @@ const checkUserSubmission = async (req, res, next) => {
             if (!sessionId) {
                 return res.status(400).json({ success: false, message: 'session_id or survey_id required' });
             }
-            queryText = `SELECT id FROM "Responses" WHERE session_id = $1 AND user_id = $2 LIMIT 1`;
+            queryText = `SELECT id FROM "Responses" WHERE session_id = $1::uuid AND user_id = $2::uuid LIMIT 1`;
             queryParams = [sessionId, userId];
         }
 
@@ -110,6 +110,7 @@ const checkUserSubmission = async (req, res, next) => {
 
         res.status(200).json({ success: true, already_submitted: rows.length > 0 });
     } catch (error) {
+        console.error('Error in checkUserSubmission:', error);
         next(error);
     }
 };

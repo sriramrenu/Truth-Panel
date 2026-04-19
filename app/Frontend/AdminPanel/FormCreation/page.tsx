@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 import Downbar from '../../Components/Downbar';
 import Navbar from '../../Components/Navbar';
 
@@ -68,7 +69,12 @@ export default function FormCreation() {
         if (res?.success) {
             setForms((prev) => prev.filter((f) => f.id !== id));
         } else {
-            alert(res?.message || 'Failed to gracefully delete from database');
+            Swal.fire({
+                title: 'Delete Failed',
+                text: res?.message || 'Failed to gracefully delete from database',
+                icon: 'error',
+                confirmButtonColor: '#1C69AE',
+            });
         }
     } catch (e) {
         console.error(e);
@@ -130,11 +136,21 @@ export default function FormCreation() {
             document.body.removeChild(link);
 
         } else {
-            alert('No responses found for this survey yet.');
+            Swal.fire({
+                title: 'No Data',
+                text: 'No responses found for this survey yet.',
+                icon: 'info',
+                confirmButtonColor: '#1C69AE',
+            });
         }
     } catch (e) {
         console.error('Failed to download responses', e);
-        alert('An error occurred generating the download.');
+        Swal.fire({
+            title: 'Error',
+            text: 'An error occurred while generating the download.',
+            icon: 'error',
+            confirmButtonColor: '#1C69AE',
+        });
     }
   };
 

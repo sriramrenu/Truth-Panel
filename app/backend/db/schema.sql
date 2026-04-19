@@ -76,5 +76,17 @@ CREATE TABLE public."Rewards" (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 6. Notifications Table
+CREATE TABLE public."Notifications" (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public."Users"(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'new_survey', 'ending_soon', 'expired'
+    related_id UUID, -- survey_id
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Note: Because we removed Supabase internal Auth logic, RLS is now solely based
 -- on your own implementation, or you can manage security exclusively in your Express Node API (recommended).

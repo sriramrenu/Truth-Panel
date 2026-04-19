@@ -117,8 +117,37 @@ export const checkUserSubmission = async (sessionId?: string, surveyId?: string)
     let url = `${API_BASE_URL}/responses/check/${sessionId}`;
     if (surveyId) {
         url = `${API_BASE_URL}/responses/check-survey?surveyId=${surveyId}`;
+    } else if (!sessionId) {
+        throw new Error("Either sessionId or surveyId must be provided to check submission.");
     }
+    
     const response = await fetchWithAuth(url, {
+        headers: await getAuthHeaders(),
+    });
+    return response.json();
+};
+
+/**
+ * Notifications API
+ */
+export const fetchNotifications = async () => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/notifications`, {
+        headers: await getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const markNotificationAsRead = async (id: string) => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: await getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const markAllNotificationsRead = async () => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/notifications/read-all`, {
+        method: 'PATCH',
         headers: await getAuthHeaders(),
     });
     return response.json();

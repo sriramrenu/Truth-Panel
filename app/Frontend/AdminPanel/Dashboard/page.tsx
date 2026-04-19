@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import Swal from 'sweetalert2';
 import Downbar from '@/app/Frontend/Components/Downbar';
 import Navbar from "../../Components/Navbar";
 
@@ -172,10 +173,20 @@ export default function DashboardPage() {
                   setStats(prev => ({ ...prev, employees: empRes.count }));
               }
           } else {
-              alert(res.error || 'Failed to create employee');
+              Swal.fire({
+                  title: 'Creation Failed',
+                  text: res.error || 'Failed to create employee',
+                  icon: 'error',
+                  confirmButtonColor: '#1C69AE',
+              });
           }
       } catch (err) {
-          alert('Error creating employee');
+          Swal.fire({
+              title: 'Error',
+              text: 'Error creating employee',
+              icon: 'error',
+              confirmButtonColor: '#1C69AE',
+          });
       }
       setIsCreatingEmp(false);
   };

@@ -30,6 +30,47 @@ const worker = new Worker('FormSubmissionsQueue', async job => {
             INSERT INTO "Rewards" (user_id, response_id, task_name, amount, transaction_type)
             VALUES ($1, $2, $3, $4, $5)
         `, [user_id, responseData.id, `${surveyTitle} (Q)`, points, 'earn']);
+
+        // Check for participation milestones for the admin
+        try {
+            const { createNotification } = require('../controllers/notificationController');
+            const surveyIdRes = await DbService.query('SELECT survey_id, started_by FROM "Sessions" WHERE id = $1', [session_id]);
+            const { survey_id, started_by } = surveyIdRes.rows[0];
+
+            if (started_by) {
+                // Get total workers
+                const { rows: workers } = await DbService.query("SELECT COUNT(*) FROM \"Users\" WHERE role = 'worker'");
+                const totalWorkers = parseInt(workers[0].count);
+
+                // Get unique participants for this survey
+                const { rows: participants } = await DbService.query(`
+                    SELECT COUNT(DISTINCT user_id) FROM "Responses" 
+                    WHERE session_id IN (SELECT id FROM "Sessions" WHERE survey_id = $1)
+                `, [survey_id]);
+                const participantCount = parseInt(participants[0].count);
+
+                if (totalWorkers > 0) {
+                    const percent = (participantCount / totalWorkers) * 100;
+                    
+                    // Check if we should notify for 50%, 80%, or 100%
+                    const milestones = [50, 80, 100];
+                    for (const m of milestones) {
+                        // If it just crossed the milestone
+                        if (percent >= m && (percent - (1/totalWorkers)*100) < m) {
+                            await createNotification(
+                                started_by,
+                                `Participation Milestone: ${m}%`,
+                                `Survey "${surveyTitle}" has reached ${m}% participation (${participantCount}/${totalWorkers} workers).`,
+                                'participation_milestone',
+                                survey_id
+                            );
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Failed to process admin milestone notification:', err);
+        }
     }
     
     return { success: true, responseId: responseData.id };

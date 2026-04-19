@@ -23,6 +23,9 @@ app.get('/', (req, res) => {
 });
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
+const { startMaintenance } = require('./services/notificationMaintenanceService');
+startMaintenance(); // Run every 5 minutes by default
+
 if (require.main === module || process.env.IS_DOCKER === 'true') {
     app.listen(PORT);
 }

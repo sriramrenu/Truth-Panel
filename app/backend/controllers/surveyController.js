@@ -57,17 +57,32 @@ const getAllSurveys = async (req, res, next) => {
 const createSession = async (req, res, next) => {
     try {
         const { survey_id } = req.body;
-        const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString(); 
-
         const resDb = await DbService.query(`
             INSERT INTO "Sessions" (survey_id, pin_code, status, started_by)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [survey_id, generatePin(), 'active', req.user?.id]);
+        `, [survey_id, 'ASSIGNED', 'active', req.user?.id]);
 
         const data = resDb.rows[0];
         
-        res.status(201).json({ success: true, message: 'Session started successfully! Please share the PIN with employees.', session: data });
+        // Notify all workers about the new survey availability
+        try {
+            const { notifyAllWorkers } = require('./notificationController');
+            const surveyRes = await DbService.query('SELECT title, description FROM "Surveys" WHERE id = $1', [survey_id]);
+            const survey = surveyRes.rows[0];
+            if (survey) {
+                await notifyAllWorkers(
+                    'New Survey Available!',
+                    `"${survey.title}" is now open for responses. Check your dashboard to participate!`,
+                    'new_survey',
+                    survey_id
+                );
+            }
+        } catch (notifErr) {
+            console.error('Failed to trigger new survey notifications:', notifErr);
+        }
+
+        res.status(201).json({ success: true, message: 'Session started successfully!', session: data });
     } catch (error) {
         next(error);
     }

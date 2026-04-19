@@ -25,34 +25,47 @@ export default function Dashboard() {
         if (walletRes?.success) setPoints(walletRes.total_points || 0);
         
         if (surveysRes?.success) {
-          const allSurveys = surveysRes.data || [];
+          const allSurveys = surveysRes.data || [];
           const activeSurveys = allSurveys.filter((s: any) => {
               if (!s.end_time) return true;
               return new Date() < new Date(s.end_time);
           });
           
-          setSurveys(activeSurveys);
           const categorizedPromises = activeSurveys.map(async (s: any) => {
             try {
-              const checkRes = await checkUserSubmission(undefined, s.id);
-              if (checkRes?.already_submitted) {
-                return { ...s, status: 'completed' };
-              }
-              
+              // Get the active session first, just like the Forms page does
               const sessionRes = await fetchActiveSession(s.id, s.end_time);
-              if (sessionRes?.success && sessionRes.session?.id) {
-                return { ...s, status: 'active', sessionId: sessionRes.session.id };
+              const sessionId = sessionRes?.success ? sessionRes.session?.id : null;
+
+              if (sessionId) {
+                // If there's an active session, check if the user has submitted to it
+                const checkRes = await checkUserSubmission(sessionId);
+                if (checkRes?.already_submitted) {
+                  return { ...s, status: 'completed' };
+                }
+                return { ...s, status: 'active', sessionId };
+              } else {
+                // No active session found - check if they completed it in a past session 
+                // (though for worker dashboard, we usually only care about active/pending)
+                const checkRes = await checkUserSubmission(undefined, s.id);
+                if (checkRes?.already_submitted) {
+                  return { ...s, status: 'completed' };
+                }
+                return { ...s, status: 'unavailable' };
               }
-              
-              return { ...s, status: 'unavailable' };
-            } catch {
+            } catch (err) {
+              console.error(`Error processing survey ${s.id}:`, err);
               return { ...s, status: 'error' };
             }
           });
 
           const results = await Promise.all(categorizedPromises);
-          const pendingArray = results.filter(s => s.status === 'active');
           
+          // Denominator should only include surveys that are actually available to the user (active or completed)
+          const relevantSurveys = results.filter(s => s.status === 'active' || s.status === 'completed');
+          const pendingArray = relevantSurveys.filter(s => s.status === 'active');
+          
+          setSurveys(relevantSurveys);
           setPendingFormsCount(pendingArray.length);
           setPendingSurveys(results);
         }
@@ -176,10 +189,10 @@ export default function Dashboard() {
         <h2 className="font-semibold text-gray-800 mb-4">Available Surveys</h2>
 
         <div className="space-y-3">
-          {pendingSurveys.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 font-medium text-sm">No surveys available.</div>
+          {pendingSurveys.filter(s => s.status === 'active').length === 0 ? (
+            <div className="p-4 text-center text-gray-500 font-medium text-sm">No new surveys available.</div>
           ) : (
-            pendingSurveys.map((survey: any) => (
+            pendingSurveys.filter(s => s.status === 'active').map((survey: any) => (
               <div key={survey.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg bg-white shadow-sm">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">

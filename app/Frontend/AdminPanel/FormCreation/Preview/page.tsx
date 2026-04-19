@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 
 type AnswerValue = string | string[];
 
@@ -237,12 +238,18 @@ export default function FormPreviewPage() {
 									);
 									
 									
-									if (surveyRes.success && surveyRes.survey) {
+									if (surveyRes.success && surveyRes.survey) {
 										const sessionRes = await startLiveSession(surveyRes.survey.id);
 										
-										if (sessionRes?.success && sessionRes.session?.pin_code) {
-											alert(`Survey Created Successfully!\n\nYour Live Session PIN is: ${sessionRes.session.pin_code}\n\nShare this PIN with your employees so they can join!`);
-										}
+										if (sessionRes?.success) {
+											await Swal.fire({
+												title: 'Survey Created!',
+												text: 'Your survey is now live and assigned to the authorized participants.',
+												icon: 'success',
+												confirmButtonText: 'Great!',
+												confirmButtonColor: '#1C69AE',
+											});
+										}
 										sessionStorage.removeItem('truth_panel_draft');
 									} else {
 										console.error("Survey creation failed on backend", surveyRes.error);

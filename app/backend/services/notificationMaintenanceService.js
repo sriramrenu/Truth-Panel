@@ -97,6 +97,7 @@ const runMaintenance = async () => {
             }
         }
 
+        console.log(`[${new Date().toISOString()}] Notification Maintenance cycle completed successfully.`);
     } catch (error) {
         console.error('Notification Maintenance Error:', error);
     }

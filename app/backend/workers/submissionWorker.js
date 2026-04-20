@@ -27,9 +27,9 @@ const worker = new Worker('FormSubmissionsQueue', async job => {
         const surveyTitle = surveyConfig.title || 'Form Submission';
 
         await DbService.query(`
-            INSERT INTO "Rewards" (user_id, response_id, task_name, amount, transaction_type)
+            INSERT INTO "Rewards" (user_id, session_id, response_id, session_name, points)
             VALUES ($1, $2, $3, $4, $5)
-        `, [user_id, responseData.id, `${surveyTitle} (Q)`, points, 'earn']);
+        `, [user_id, session_id, responseData.id, surveyTitle, points]);
 
         // Check for participation milestones for the admin
         try {

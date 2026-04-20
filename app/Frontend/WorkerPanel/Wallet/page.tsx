@@ -3,38 +3,23 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Gift,
-  Coffee,
-  Umbrella,
-  PlusCircle,
-  ArrowRight,
   CheckCircle2,
   AlertCircle,
   X,
   Send,
+  Mail,
+  ShieldCheck
 } from "lucide-react";
 import WNavbar from "../../Components/WNavbar";
 import WDownbar from "../../Components/WDownbar";
-import { useRouter } from "next/navigation";
-
-
-const REWARDS_CATALOG = [
-  { id: 1, title: "Amazon Gift Card", value: "$20", cost: 2000, icon: Gift },
-  { id: 2, title: "Starbucks Coffee", value: "$5", cost: 500, icon: Coffee },
-  { id: 3, title: "Company Swag", value: "T-Shirt", cost: 1500, icon: Umbrella },
-  { id: 4, title: "Extra PTO Hour", value: "+1 hr", cost: 5000, icon: PlusCircle },
-];
 
 export default function WalletPage() {
-  const router = useRouter();
   const [points, setPoints] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [selectedReward, setSelectedReward] = useState<typeof REWARDS_CATALOG[0] | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
-  const [showTransferSheet, setShowTransferSheet] = useState(false);
-  const [transferAmount, setTransferAmount] = useState("");
-  const [transferRecipient, setTransferRecipient] = useState("");
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const loadWallet = async () => {
@@ -43,7 +28,11 @@ export default function WalletPage() {
         const res = await fetchWalletHistory();
         if (res?.success) {
           setPoints(res.total_points || 0);
-          setTransactions(res.history || []);
+          // Reverse history: newest first
+          const sortedHistory = (res.history || []).sort((a: any, b: any) => 
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          );
+          setTransactions(sortedHistory);
         }
       } catch (err) {
         console.error('Failed to load wallet', err);
@@ -59,59 +48,41 @@ export default function WalletPage() {
     }, 3000);
   };
 
-  const handleRedeem = async (reward: typeof REWARDS_CATALOG[0]) => {
-    setSelectedReward(null);
-    if (points >= reward.cost) {
-      try {
-        const { redeemWalletPoints, fetchWalletHistory } = await import('../../../../utils/api');
-        const res = await redeemWalletPoints(reward.title, reward.cost);
-        if (res.success) {
-           setPoints(prev => prev - reward.cost);
-           const hist = await fetchWalletHistory();
-           if (hist?.success) setTransactions(hist.history || []);
-           showToast('success', res.message);
-        } else {
-           showToast('error', res.message || 'Failed to redeem reward.');
-        }
-      } catch (err) {
-        showToast('error', 'Network error redeeming reward.');
-      }
-    } else {
-      showToast('error', `Not enough points for ${reward.title}.`);
-    }
-  };
-
-  const handleTransfer = async () => {
-    const amount = parseInt(transferAmount);
-    if (isNaN(amount) || amount <= 0) {
-      showToast('error', 'Please enter a valid amount.');
-      return;
-    }
-    if (amount > points) {
-      showToast('error', 'Insufficient points for transfer.');
+  const handleRedeemNeuCoins = async () => {
+    if (!agreeTerms) {
+      showToast('error', 'Please agree to the terms and conditions.');
       return;
     }
     
+    setIsProcessing(true);
     try {
-        const { transferWalletPoints, fetchWalletHistory } = await import('../../../../utils/api');
-        const res = await transferWalletPoints(transferRecipient, amount);
-        if (res.success) {
-           setPoints(prev => prev - amount);
-           const hist = await fetchWalletHistory();
-           if (hist?.success) setTransactions(hist.history || []);
-           setShowTransferSheet(false);
-           setTransferAmount("");
-           showToast('success', res.message);
-        } else {
-           showToast('error', res.message || 'Failed to transfer points.');
-        }
+      const { redeemWalletPoints, fetchWalletHistory } = await import('../../../../utils/api');
+      // Redeeming all available points for Neu Coins
+      const res = await redeemWalletPoints("Neu Coins Transfer", points);
+      if (res.success) {
+         setPoints(0);
+         const hist = await fetchWalletHistory();
+         if (hist?.success) {
+            const sortedHistory = (hist.history || []).sort((a: any, b: any) => 
+                new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            );
+            setTransactions(sortedHistory);
+         }
+         setShowRedeemModal(false);
+         setAgreeTerms(false);
+         showToast('success', "Transfer to mail initiated successfully!");
+      } else {
+         showToast('error', res.message || 'Failed to initiate transfer.');
+      }
     } catch (err) {
-        showToast('error', 'Network error transferring points.');
+      showToast('error', 'Network error during transfer.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
-    <div className="flex flex-col space-y-6 pt-6 pb-24 relative">
+    <div className="flex flex-col space-y-6 pt-6 pb-24 relative min-h-screen bg-[#f8fafc]">
       <WNavbar />
       
       {/* Toast Notification */}
@@ -121,7 +92,7 @@ export default function WalletPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className={`absolute top-0 left-4 right-4 z-50 p-4 rounded-xl shadow-lg flex items-center space-x-3 ${
+            className={`fixed top-4 left-4 right-4 z-[100] p-4 rounded-xl shadow-lg flex items-center space-x-3 ${
               statusMsg.type === 'success' ? 'bg-[#f4fbfa] border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
             }`}
           >
@@ -133,247 +104,144 @@ export default function WalletPage() {
 
       {/* Main Balance Card */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-        className="bg-gradient-to-br from-[#1e6cb3] to-[#124b82] rounded-2xl shadow-lg p-6 text-white relative overflow-hidden mx-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-[#1e6cb3] to-[#124b82] rounded-3xl shadow-xl p-8 text-white relative overflow-hidden mx-4"
       >
-        <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-          <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21,18V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V6H12C10.89,6 10,6.9 10,8V16A2,2 0 0,0 12,18M12,16H22V8H12M16,13.5A1.5,1.5 0 0,1 14.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,12A1.5,1.5 0 0,1 16,13.5Z" />
-          </svg>
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+          <ShieldCheck size={140} />
         </div>
         
-        <p className="text-sm font-medium text-blue-100 mb-1 relative z-10">Total Available Points</p>
-        <h2 className="text-5xl font-bold mb-6 relative z-10 tracking-tight">
+        <p className="text-blue-100 text-sm font-medium mb-1 relative z-10">Total Available Balance</p>
+        <h2 className="text-6xl font-bold mb-8 relative z-10 tracking-tight">
           {points.toLocaleString()}
-          <span className="text-lg font-medium text-[#fcc12d] ml-1">pts</span>
+          <span className="text-xl font-medium text-[#fcc12d] ml-2">pts</span>
         </h2>
         
-        <div className="flex space-x-3 relative z-10">
-          <button 
-            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-            className="flex-1 bg-[#fcc12d] text-gray-900 font-semibold py-2.5 rounded-lg shadow-sm hover:bg-[#eab308] transition-colors flex items-center justify-center space-x-2"
-          >
-            <Gift className="w-4 h-4" />
-            <span>Redeem</span>
-          </button>
-          <button 
-            onClick={() => setShowTransferSheet(true)}
-            className="flex-1 bg-white/20 text-white font-semibold py-2.5 rounded-lg shadow-sm hover:bg-white/30 transition-colors flex items-center justify-center space-x-2 backdrop-blur-sm"
-          >
-            <ArrowRight className="w-4 h-4" />
-            <span>Transfer</span>
-          </button>
-        </div>
+        <button 
+          onClick={() => setShowRedeemModal(true)}
+          className="w-full bg-[#fcc12d] text-gray-900 font-bold py-4 rounded-2xl shadow-lg hover:bg-[#eab308] transition-all transform active:scale-95 flex items-center justify-center space-x-3 relative z-10"
+        >
+          <Send className="w-5 h-5" />
+          <span>Redeem Points</span>
+        </button>
       </motion.div>
 
-      {/* Reward Options */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="px-4"
-      >
-        <h3 className="font-bold text-gray-800 mb-4 px-1">Rewards Catalog</h3>
-        
-        <div className="grid grid-cols-2 gap-4">
-          {REWARDS_CATALOG.map((item) => {
-            const Icon = item.icon;
-            const canAfford = points >= item.cost;
-            return (
-              <div 
-                key={item.id} 
-                onClick={() => setSelectedReward(item)}
-                className={`bg-white rounded-xl shadow-sm border p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
-                  canAfford ? 'border-[#1e6cb3]/20 hover:border-[#1e6cb3] hover:shadow-md' : 'border-gray-100 opacity-50 grayscale hover:opacity-100 hover:grayscale-0'
-                }`}
-              >
-                <div className="w-12 h-12 bg-[#ecf8f8] rounded-full flex items-center justify-center mb-3">
-                  <Icon className="w-6 h-6 text-[#1e6cb3]" />
-                </div>
-                <h4 className="font-semibold text-gray-800 text-sm mb-1">{item.title}</h4>
-                <span className={`text-xs font-bold ${canAfford ? 'text-[#1e6cb3]' : 'text-gray-400'}`}>
-                  {item.cost.toLocaleString()} pts
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      {/* Recent Transactions Preview */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mx-4"
-      >
-        <div className="p-4 border-b border-gray-50 flex justify-between items-center">
-          <h3 className="font-bold text-gray-800">Recent Earned</h3>
-          <button 
-            onClick={() => setShowAllTransactions(!showAllTransactions)}
-            className="text-xs text-[#1e6cb3] font-bold tracking-wider hover:underline uppercase transition-all"
-          >
-            {showAllTransactions ? "View Less" : "View All"}
-          </button>
+      {/* Transactions History */}
+      <div className="flex-1 px-4">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <h3 className="font-bold text-gray-800 text-lg">Points History</h3>
+          <span className="text-xs font-bold text-[#1e6cb3] bg-blue-50 px-3 py-1 rounded-full uppercase tracking-wider">Newest First</span>
         </div>
         
-        <motion.div layout className="divide-y divide-gray-50">
+        <div className="space-y-3">
           {transactions.length === 0 ? (
-            <div className="p-6 text-center text-gray-500 font-medium text-sm">No transactions yet</div>
+            <div className="bg-white rounded-2xl p-12 border border-dashed border-gray-200 text-center">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-gray-300" />
+              </div>
+              <p className="text-gray-400 font-medium">No transactions found</p>
+            </div>
           ) : (
-            (showAllTransactions ? transactions : transactions.slice(0, 3)).map((tx, index) => (
+            transactions.map((tx, index) => (
               <motion.div 
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
                 key={tx.id || index} 
-                className="p-4 flex justify-between items-center bg-[#f4fbfa]/30"
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center"
               >
-                <div className="flex flex-col space-y-1">
-                  <span className="font-semibold text-sm text-gray-800">{tx.task_name}</span>
-                  <span className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString()}</span>
+                <div className="flex items-center space-x-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.points > 0 ? 'bg-green-50' : 'bg-orange-50'}`}>
+                    <CheckCircle2 className={`w-5 h-5 ${tx.points > 0 ? 'text-green-500' : 'text-orange-500'}`} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-800 text-sm">{tx.session_name}</span>
+                    <span className="text-xs text-gray-400 font-medium">{new Date(tx.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
                 </div>
-                <span className={`font-bold ${tx.transaction_type === 'earn' ? 'text-[#fcc12d]' : 'text-gray-500'}`}>
-                  {tx.transaction_type === 'earn' ? '+' : '-'}{tx.amount}
+                <span className={`font-black text-lg ${tx.points > 0 ? 'text-[#1e6cb3]' : 'text-gray-400'}`}>
+                  {tx.points > 0 ? '+' : ''}{tx.points}
                 </span>
               </motion.div>
             ))
           )}
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
-      {/* Transfer Points Sheet Overlay */}
+      {/* Redeem Modal */}
       <AnimatePresence>
-        {showTransferSheet && (
-          <div className="fixed inset-y-0 inset-x-0 mx-auto w-full max-w-[400px] z-50 flex items-end sm:items-center justify-center sm:p-4">
+        {showRedeemModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[#2b333e]/60 backdrop-blur-sm"
-              onClick={() => setShowTransferSheet(false)}
-            />
-            
-            <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 w-full relative z-10 flex flex-col"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">Transfer Points</h2>
-                  <p className="text-sm text-gray-500 mt-1">Send your points to a colleague</p>
-                </div>
-                <button 
-                  onClick={() => setShowTransferSheet(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4 mb-8">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Recipient</label>
-                  <select 
-                    value={transferRecipient}
-                    onChange={(e) => setTransferRecipient(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-[#1e6cb3] focus:border-[#1e6cb3] block p-3 outline-none"
-                  >
-                      <option value="Colleague Example">Colleague Example</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Amount</label>
-                  <div className="relative">
-                    <input 
-                      type="number" 
-                      placeholder="Enter points logic"
-                      value={transferAmount}
-                      onChange={(e) => setTransferAmount(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-[#1e6cb3] focus:border-[#1e6cb3] block p-3 outline-none pl-4"
-                    />
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                      <span className="text-sm text-gray-400 font-bold">pts</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 flex justify-between">
-                    <span>Available:</span> 
-                    <span className="font-bold text-[#1e6cb3]">{points.toLocaleString()} pts</span>
-                  </p>
-                </div>
-              </div>
-
-              <button 
-                onClick={handleTransfer}
-                className="w-full py-4 text-sm font-bold bg-[#1e6cb3] hover:bg-[#15538e] text-white rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Send {transferAmount || 0} pts</span>
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* View All Transactions inline handled above */}
-
-      {/* Redemption Confirmation Modal */}
-      <AnimatePresence>
-        {selectedReward && (
-          <div className="fixed inset-y-0 inset-x-0 mx-auto w-full max-w-[400px] z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[#2b333e]/60 backdrop-blur-sm"
-              onClick={() => setSelectedReward(null)}
+              className="absolute inset-0 bg-gray-900/60 backdrop-blur-md"
+              onClick={() => setShowRedeemModal(false)}
             />
             
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-[320px] relative z-10 flex flex-col items-center"
+              className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative z-10 overflow-hidden"
             >
               <button 
-                onClick={() => setSelectedReward(null)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                onClick={() => setShowRedeemModal(false)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
 
-              <div className="w-16 h-16 bg-[#ecf8f8] rounded-full flex items-center justify-center mb-4 mt-2">
-                <selectedReward.icon className="w-8 h-8 text-[#1e6cb3]" />
-              </div>
-              
-              <h2 className="text-xl font-bold text-gray-800 mb-1 text-center">Redeem Reward</h2>
-              <p className="text-gray-500 text-sm text-center mb-6">
-                Are you sure you want to redeem your points for <span className="font-bold text-gray-700">{selectedReward.title} ({selectedReward.value})</span>?
-              </p>
+              <div className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-6 rotate-3">
+                  <Mail className="w-10 h-10 text-[#1e6cb3]" />
+                </div>
+                
+                <h2 className="text-2xl font-black text-gray-800 mb-2">Redeem Neu Coins</h2>
+                <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                  Your points will be converted and transferred to your registered <span className="font-bold text-[#1e6cb3]">Official Mail ID</span> as Neu Coins.
+                </p>
 
-              <div className="w-full bg-gray-50 rounded-xl p-4 flex justify-between items-center mb-6 border border-gray-100">
-                <span className="text-sm text-gray-500 font-medium">Cost:</span>
-                <span className="font-bold text-[#1e6cb3]">{selectedReward.cost.toLocaleString()} pts</span>
-              </div>
+                <div className="w-full bg-gray-50 rounded-2xl p-5 border border-gray-100 flex flex-col space-y-3 mb-8">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500 font-medium">Transfer Amount:</span>
+                        <span className="font-black text-gray-800">{points.toLocaleString()} pts</span>
+                    </div>
+                    <div className="h-px bg-gray-200 w-full" />
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500 font-medium">Neu Coins Value:</span>
+                        <span className="font-black text-[#1e6cb3]">{points.toLocaleString()} Coins</span>
+                    </div>
+                </div>
 
-              <div className="flex space-x-3 w-full">
+                <label className="flex items-start space-x-3 mb-8 text-left group cursor-pointer">
+                  <div className="relative flex items-center">
+                    <input 
+                      type="checkbox" 
+                      checked={agreeTerms}
+                      onChange={(e) => setAgreeTerms(e.target.checked)}
+                      className="peer h-6 w-6 rounded-lg border-2 border-gray-200 text-[#1e6cb3] focus:ring-transparent transition-all cursor-pointer"
+                    />
+                    <CheckCircle2 className="absolute w-6 h-6 text-[#1e6cb3] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+                  </div>
+                  <span className="text-xs text-gray-500 font-medium leading-tight group-hover:text-gray-700 transition-colors">
+                    I agree to the Terms and Conditions for Neu Coins redemption and point transfer to my official mail.
+                  </span>
+                </label>
+
                 <button 
-                  onClick={() => setSelectedReward(null)}
-                  className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                  onClick={handleRedeemNeuCoins}
+                  disabled={!agreeTerms || points <= 0 || isProcessing}
+                  className="w-full py-4 bg-[#1e6cb3] text-white font-bold rounded-2xl shadow-xl hover:bg-[#15538e] disabled:bg-gray-200 disabled:shadow-none transition-all flex items-center justify-center space-x-2"
                 >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => handleRedeem(selectedReward)}
-                  className="flex-1 py-3 text-sm font-semibold bg-[#1e6cb3] hover:bg-[#15538e] text-white rounded-xl shadow-md transition-colors"
-                >
-                  Confirm
+                  {isProcessing ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                  <span>{isProcessing ? "Processing..." : `Transfer ${points.toLocaleString()} Points`}</span>
                 </button>
               </div>
             </motion.div>
@@ -381,7 +249,6 @@ export default function WalletPage() {
         )}
       </AnimatePresence>
       <WDownbar />
-
     </div>
   );
 }

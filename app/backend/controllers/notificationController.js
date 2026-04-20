@@ -10,7 +10,7 @@ const getUserNotifications = async (req, res, next) => {
 
         const { rows } = await DbService.query(`
             SELECT * FROM "Notifications" 
-            WHERE user_id = $1::uuid 
+            WHERE user_id = $1::uuid AND deleted_at IS NULL
             ORDER BY created_at DESC
         `, [userId]);
 
@@ -30,7 +30,7 @@ const markAsRead = async (req, res, next) => {
 
         await DbService.query(`
             UPDATE "Notifications" SET is_read = true 
-            WHERE id = $1::uuid AND user_id = $2::uuid
+            WHERE id = $1::uuid AND user_id = $2::uuid AND deleted_at IS NULL
         `, [id, userId]);
 
         res.status(200).json({ success: true, message: 'Notification marked as read' });
@@ -47,7 +47,7 @@ const markAllAsRead = async (req, res, next) => {
         const userId = req.user?.id;
         await DbService.query(`
             UPDATE "Notifications" SET is_read = true 
-            WHERE user_id = $1::uuid
+            WHERE user_id = $1::uuid AND deleted_at IS NULL
         `, [userId]);
 
         res.status(200).json({ success: true, message: 'All notifications marked as read' });
@@ -77,8 +77,8 @@ const createNotification = async (userId, title, message, type, relatedId = null
  */
 const notifyAllWorkers = async (title, message, type, relatedId = null) => {
     try {
-        // Fetch all users with role 'worker'
-        const { rows: workers } = await DbService.query('SELECT id FROM "Users" WHERE role = $1', ['worker']);
+        // Fetch all non-deleted users with role 'worker'
+        const { rows: workers } = await DbService.query('SELECT id FROM "Users" WHERE role = $1 AND deleted_at IS NULL', ['worker']);
         
         for (const worker of workers) {
             await createNotification(worker.id, title, message, type, relatedId);

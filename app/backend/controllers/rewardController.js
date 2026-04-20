@@ -1,42 +1,42 @@
-const DbService = require('../config/dbConfig');
+const DbService = require('../config/dbConfig');
+
 const allocatePoints = async (req, res, next) => {
     try {
-        const { response_id, points } = req.body;
+        const { session_id, session_name, points } = req.body;
         const userId = req.user?.id;
 
-        if (!response_id || points === undefined) {
+        if (!session_id || points === undefined) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Invalid payload: response_id and points required' 
+                message: 'Invalid payload: session_id and points required' 
             });
-        }
+        }
         await DbService.query(`
-            INSERT INTO "Rewards" (user_id, response_id, task_name, amount, transaction_type)
-            VALUES ($1, $2, $3, $4, $5)
-        `, [userId, response_id, 'Survey Response Bonus', points, 'earn']);
+            INSERT INTO "Rewards" (user_id, session_id, session_name, points, updated_by)
+            VALUES ($1, $2, $3, $4, $1)
+        `, [userId, session_id, session_name || 'Survey Session', points]);
 
         res.status(200).json({ 
             success: true, 
-            message: `Successfully earned ${points} points!`, 
+            message: `Successfully earned ${points} Neu Coins!`, 
             awarded: points 
         });
 
     } catch (error) {
         next(error);
     }
-};
+};
+
 const getUserWallet = async (req, res, next) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user?.id;
         const { rows } = await DbService.query(`
-            SELECT amount, transaction_type, task_name, created_at 
-            FROM "Rewards" WHERE user_id = $1
-        `, [userId]);
-        const totalPoints = rows.reduce((sum, record) => {
-            return record.transaction_type === 'spend' 
-                ? sum - (record.amount || 0) 
-                : sum + (record.amount || 0);
-        }, 0);
+            SELECT points, session_name, updated_at 
+            FROM "Rewards" 
+            WHERE user_id = $1 AND deleted_at IS NULL
+        `, [userId]);
+
+        const totalPoints = rows.reduce((sum, record) => sum + (record.points || 0), 0);
 
         res.status(200).json({ 
             success: true, 
@@ -47,31 +47,33 @@ const getUserWallet = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-};
+};
+
 const redeemReward = async (req, res, next) => {
     try {
         const { reward_title, reward_cost } = req.body;
         const userId = req.user?.id;
 
         await DbService.query(`
-            INSERT INTO "Rewards" (user_id, task_name, amount, transaction_type)
-            VALUES ($1, $2, $3, $4)
-        `, [userId, `Redeemed: ${reward_title}`, reward_cost, 'spend']);
+            INSERT INTO "Rewards" (user_id, session_name, points, updated_by)
+            VALUES ($1, $2, $3, $1)
+        `, [userId, `Redeemed: ${reward_title}`, -reward_cost]);
         
         res.status(200).json({ success: true, message: `Redeemed ${reward_title}` });
     } catch (error) { next(error); }
-};
+};
+
 const transferPoints = async (req, res, next) => {
     try {
-        const { recipient, amount } = req.body;
+        const { recipient, points } = req.body;
         const userId = req.user?.id;
 
         await DbService.query(`
-            INSERT INTO "Rewards" (user_id, task_name, amount, transaction_type)
-            VALUES ($1, $2, $3, $4)
-        `, [userId, `Transferred to ${recipient}`, amount, 'spend']);
+            INSERT INTO "Rewards" (user_id, session_name, points, updated_by)
+            VALUES ($1, $2, $3, $1)
+        `, [userId, `Transferred to ${recipient}`, -points]);
         
-        res.status(200).json({ success: true, message: `Transferred ${amount} points` });
+        res.status(200).json({ success: true, message: `Transferred ${points} points` });
     } catch (error) { next(error); }
 };
 

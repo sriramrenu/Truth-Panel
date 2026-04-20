@@ -185,11 +185,11 @@ export const redeemWalletPoints = async (rewardTitle: string, rewardCost: number
     return response.json();
 };
 
-export const transferWalletPoints = async (recipient: string, amount: number) => {
+export const transferWalletPoints = async (recipient: string, points: number) => {
     const response = await fetchWithAuth(`${API_BASE_URL}/rewards/transfer`, {
         method: 'POST',
         headers: await getAuthHeaders(),
-        body: JSON.stringify({ recipient, amount })
+        body: JSON.stringify({ recipient, points })
     });
     return response.json();
 };

@@ -14,9 +14,19 @@ services:
       - REDIS_URL=${REDIS_URL}
       - JWT_SECRET=${JWT_SECRET}
       - DATABASE_URL=${DATABASE_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    depends_on:
+      - flyway
+    restart: on-failure
+
+  flyway:
+    image: flyway/flyway:latest
+    command: -baselineOnMigrate=true -locations=filesystem:/flyway/sql migrate
+    volumes:
+      - ./db/migration:/flyway/sql
+    environment:
+      - FLYWAY_URL=${FLYWAY_URL}
+      - FLYWAY_USER=${FLYWAY_USER}
+      - FLYWAY_PASSWORD=${FLYWAY_PASSWORD}
     restart: on-failure
 
 networks:

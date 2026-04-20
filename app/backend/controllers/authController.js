@@ -22,7 +22,7 @@ const sendOTP = async (req, res) => {
         }
 
         const normalizedEmail = email.trim().toLowerCase();
-        const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 LIMIT 1', [normalizedEmail]);
+        const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 AND deleted_at IS NULL LIMIT 1', [normalizedEmail]);
         if (rows.length === 0) {
             return res.status(404).json({ success: false, error: "mail doesn't exists" });
         }
@@ -83,7 +83,7 @@ const resetPassword = async (req, res) => {
         }
 
         const normalizedEmail = email.trim().toLowerCase();
-        const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 LIMIT 1', [normalizedEmail]);
+        const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 AND deleted_at IS NULL LIMIT 1', [normalizedEmail]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'No user found with this email' });
         }
@@ -103,7 +103,7 @@ const login = async (req, res, next) => {
         const { email, password } = req.body;
         const normalizedEmail = email.trim().toLowerCase();
 
-        const { rows } = await DbService.query('SELECT * FROM "Users" WHERE email = $1 LIMIT 1', [normalizedEmail]);
+        const { rows } = await DbService.query('SELECT * FROM "Users" WHERE email = $1 AND deleted_at IS NULL LIMIT 1', [normalizedEmail]);
         const user = rows[0];
 
         if (!user) {
@@ -162,7 +162,7 @@ const refreshToken = async (req, res, next) => {
                 return res.status(401).json({ error: 'Invalid or expired refresh token' });
             }
 
-            const { rows } = await DbService.query('SELECT * FROM "Users" WHERE id = $1 LIMIT 1', [decoded.id]);
+            const { rows } = await DbService.query('SELECT * FROM "Users" WHERE id = $1 AND deleted_at IS NULL LIMIT 1', [decoded.id]);
             const user = rows[0];
             if (!user) {
                 return res.status(401).json({ error: 'User no longer exists' });

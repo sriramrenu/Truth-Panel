@@ -89,14 +89,17 @@ export default function FormCreation() {
         const res = await fetchSurveyAnalytics(surveyId);
         
         if (res?.success && res.data && res.data.length > 0) {
-            const rawData = res.data;
+            const rawData = res.data;
+
             const questionMap = new Map<string, string>();
             rawData.forEach((item: any) => {
                 if (item.question_id && item.Questions?.question_text) {
                     questionMap.set(item.question_id, item.Questions.question_text);
                 }
-            });
-            const headers = ['Session ID', 'User ID', 'Submitted At', ...Array.from(questionMap.values())];
+            });
+
+            const headers = ['Session ID', 'User ID', 'Submitted At', ...Array.from(questionMap.values())];
+
             const submissions = new Map<string, any>();
             rawData.forEach((item: any) => {
                 const subKey = `${item.user_id}_${item.session_id}`;
@@ -109,7 +112,8 @@ export default function FormCreation() {
                     });
                 }
                 submissions.get(subKey).answers[item.question_id] = item.answer || '';
-            });
+            });
+
             let csvContent = headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n';
 
             submissions.forEach((subData) => {
@@ -125,7 +129,8 @@ export default function FormCreation() {
                 });
 
                 csvContent += row.join(',') + '\n';
-            });
+            });
+
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -155,7 +160,8 @@ export default function FormCreation() {
   };
 
   useEffect(() => {
-    sessionStorage.removeItem('truth_panel_draft');
+    sessionStorage.removeItem('truth_panel_draft');
+
     const loadForms = async () => {
       try {
         const { fetchAllSurveys } = await import('../../../../utils/api');

@@ -128,6 +128,14 @@ const login = async (req, res, next) => {
             { expiresIn: '7d' }
         );
         
+        const auditLog = require('../utils/auditLogger');
+        await auditLog(req, {
+            action: 'login',
+            table: 'Users',
+            recordId: user.id,
+            newData: { email: user.email, role: user.role }
+        });
+        
         res.status(200).json({
             success: true,
             session: { 

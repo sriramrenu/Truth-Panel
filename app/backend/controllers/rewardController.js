@@ -68,6 +68,14 @@ const redeemReward = async (req, res, next) => {
             RETURNING balance_after
         `, [userId, reward_cost, `Redeemed: ${reward_title}`]);
         
+        const auditLog = require('../utils/auditLogger');
+        await auditLog(req, {
+            action: 'redeem',
+            table: 'Transactions',
+            recordId: userId, // Mapping to user for wallet history
+            newData: { reward_title, reward_cost, new_balance: rows[0].balance_after }
+        });
+        
         res.status(200).json({ success: true, message: `Redeemed ${reward_title}`, new_balance: rows[0].balance_after });
     } catch (error) {
         next(error);
@@ -100,6 +108,14 @@ const transferPoints = async (req, res, next) => {
                 INSERT INTO "Transactions" (user_id, amount, type, description)
                 VALUES ($1, $2, 'earn', $3)
             `, [recipientId, points, `Transfer from user`]);
+
+            const auditLog = require('../utils/auditLogger');
+            await auditLog(req, {
+                action: 'transfer',
+                table: 'Transactions',
+                recordId: userId,
+                newData: { recipient_email, points }
+            });
 
             await DbService.query('COMMIT');
             res.status(200).json({ success: true, message: `Transferred ${points} points to ${recipient_email}` });

@@ -51,6 +51,14 @@ const createSurvey = async (req, res, next) => {
             }
         }
 
+        const auditLog = require('../utils/auditLogger');
+        await auditLog(req, {
+            action: 'create',
+            table: 'Survey_Versions',
+            recordId: versionId,
+            newData: { title, points_per_question }
+        });
+
         res.status(201).json({ 
             success: true, 
             message: 'Survey created successfully', 

@@ -1,12 +1,6 @@
 const pino = require('pino');
 
-/**
- * Enterprise-Grade Logger (Pino)
- * Standardized for TATA Production:
- * - Outputs NDJSON for ELK/Splunk ingestion
- * - High performance, zero-overhead
- * - Local-only, zero-SaaS
- */
+
 const logger = pino({
     level: process.env.LOG_LEVEL || 'info',
     base: {

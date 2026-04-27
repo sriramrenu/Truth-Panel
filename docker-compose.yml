@@ -24,6 +24,13 @@ services:
     restart: on-failure
     labels:
       logging: "promtail"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 256M
 
   truth-panel-worker:
     container_name: truth-panel-worker
@@ -42,12 +49,26 @@ services:
     restart: on-failure
     labels:
       logging: "promtail"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
 
   redis:
     image: redis:alpine
     networks:
       - truth_network
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          memory: 64M
 
   flyway:
     image: flyway/flyway:latest
@@ -74,6 +95,11 @@ services:
     networks:
       - truth_network
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   promtail:
     image: grafana/promtail:latest
@@ -85,6 +111,11 @@ services:
     networks:
       - truth_network
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 128M
 
   grafana:
     image: grafana/grafana:latest
@@ -100,6 +131,11 @@ services:
     depends_on:
       - loki
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
 volumes:
   loki_data:

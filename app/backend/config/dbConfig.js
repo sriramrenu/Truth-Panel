@@ -2,34 +2,27 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  // TATA Production Optimized Settings
+  max: 30,                       // Max clients in the pool
+  idleTimeoutMillis: 10000,      // Close idle clients after 10 seconds
+  connectionTimeoutMillis: 5000, // Wait 5s for a connection before failing
+  maxUses: 7500,                 // Close client after 7500 uses to prevent memory leaks
 });
 
 const DbService = {
-  /**
-   * Execute a Database Query
-   * @param {string} text - The raw SQL query (e.g. 'SELECT * FROM users WHERE id = $1')
-   * @param {Array} params - Array of parameters mapped to $1, $2 etc.
-   * @returns {Object} Result of query ({ rows, rowCount, ... })
-   */
   query: async (text, params) => {
-    const start = Date.now();
-    try {
-      const res = await pool.query(text, params);
-      return res;
-    } catch (error) {
-      throw error;
-    }
+    return await pool.query(text, params);
+  },
+
+  getClient: async () => {
+    return await pool.connect();
   },
 
   /**
-   * Expose a generic interface to get a single client for transactions.
+   * Gracefully close all pool connections
    */
-  getClient: async () => {
-    return await pool.connect();
+  shutdown: async () => {
+    await pool.end();
   }
 };
 

@@ -1,11 +1,12 @@
 version: '3.8'
 
 services:
-  truth-panel:
+  truth-panel-api:
     container_name: truth-panel-api
     build:
       context: .
       dockerfile: Dockerfile
+    command: npm start
     ports:
       - "3000:3000"
       - "5000:5000"
@@ -17,6 +18,24 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - flyway
+      - redis
+    networks:
+      - truth_network
+    restart: on-failure
+    labels:
+      logging: "promtail"
+
+  truth-panel-worker:
+    container_name: truth-panel-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: node app/backend/worker.js
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
       - redis
     networks:
       - truth_network

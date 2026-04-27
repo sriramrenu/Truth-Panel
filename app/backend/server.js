@@ -6,7 +6,6 @@ const morgan = require('morgan');
 const logger = require('./utils/logger');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
-require('./workers/submissionWorker');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,19 +62,66 @@ app.use(errorHandler);
 const { startMaintenance } = require('./services/notificationMaintenanceService');
 startMaintenance(); 
 
-process.on('uncaughtException', (err) => {
-    logger.fatal({ msg: 'UNCAUGHT EXCEPTION', stack: err.stack });
-    process.exit(1);
-});
+// 4. LIFECYCLE MANAGEMENT (Graceful Shutdown)
+// =============================================================================
+const gracefulShutdown = async (signal) => {
+    logger.info(`${signal} signal received. Starting graceful shutdown...`);
+    
+    // 1. Stop accepting new requests
+    const server = app.listen(PORT); // Reference to the server
+    server.close(async () => {
+        logger.info('HTTP server closed.');
+        
+        try {
+            // 2. Close Database and Cache connections
+            const DbService = require('./config/dbConfig');
+            const redisClient = require('./config/redisClient');
+            
+            await DbService.shutdown();
+            logger.info('Database pool closed.');
+            
+            await redisClient.quit();
+            logger.info('Redis connection closed.');
+            
+            process.exit(0);
+        } catch (err) {
+            logger.error({ msg: 'Error during shutdown', error: err.message });
+            process.exit(1);
+        }
+    });
 
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error({ msg: 'UNHANDLED REJECTION', reason, promise });
-});
+    // Force shutdown after 10s if graceful fails
+    setTimeout(() => {
+        logger.fatal('Could not close connections in time, forceful shutdown.');
+        process.exit(1);
+    }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 if (require.main === module || process.env.IS_DOCKER === 'true') {
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
         logger.info(`🚀 TATA Production Server running on port ${PORT}`);
     });
+    
+    // Override the gracefulShutdown closure with the actual server instance
+    process.removeAllListeners('SIGTERM');
+    process.removeAllListeners('SIGINT');
+    
+    const handleSignal = (signal) => {
+        logger.info(`${signal} received. Closing server...`);
+        server.close(async () => {
+            const DbService = require('./config/dbConfig');
+            const redisClient = require('./config/redisClient');
+            await DbService.shutdown();
+            await redisClient.quit();
+            process.exit(0);
+        });
+    };
+
+    process.on('SIGTERM', () => handleSignal('SIGTERM'));
+    process.on('SIGINT', () => handleSignal('SIGINT'));
 }
 
 module.exports = app;

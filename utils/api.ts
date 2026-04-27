@@ -10,7 +10,7 @@ const isSurveyExpired = (endTime?: string | null) => {
 const getAuthHeaders = async () => {
 
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('supabase_token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('truth_panel_token') : null;
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
@@ -34,7 +34,7 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
                 const data = await refreshRes.json();
                 if (data.session?.access_token) {
 
-                    localStorage.setItem('supabase_token', data.session.access_token);
+                    localStorage.setItem('truth_panel_token', data.session.access_token);
 
                     const newHeaders = await getAuthHeaders();
                     return fetch(url, { ...options, headers: { ...options.headers, ...newHeaders } });

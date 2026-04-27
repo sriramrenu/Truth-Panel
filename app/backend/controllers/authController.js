@@ -5,12 +5,12 @@ const jwt = require('jsonwebtoken');
 
 const otpStore = new Map();
 const transporter = nodemailer.createTransport({
-    host: process.env.BREVO_SMTP_SERVER || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.BREVO_SMTP_PORT || '587'),
+    host: process.env.SMTP_SERVER || 'smtp-relay.brevo.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
     secure: false, // true for 465, false for other ports
     auth: {
-        user: process.env.BREVO_SMTP_LOGIN,
-        pass: process.env.BREVO_SMTP_KEY,
+        user: process.env.SMTP_LOGIN,
+        pass: process.env.SMTP_KEY,
     },
 });
 

@@ -14,7 +14,7 @@ export default function Profile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('supabase_token');
+        const token = localStorage.getItem('truth_panel_token');
         if (!token) {
            router.replace('/Frontend/Login');
            return;

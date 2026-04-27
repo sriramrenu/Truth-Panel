@@ -1,19 +1,24 @@
 const DbService = require('../config/dbConfig');
 const bcrypt = require('bcrypt');
 
+/**
+ * Fetches all non-admin users, including their new profile fields.
+ */
 const getEmployees = async (req, res, next) => {
     try {
         if (req.user?.role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden: Admin access required.' });
         }
 
-        const { rows } = await DbService.query('SELECT id, email, name, role FROM "Users" WHERE role != $1', ['admin']);
+        const { rows } = await DbService.query('SELECT id, email, name, role, phone_number, department FROM "Users" WHERE role != $1 AND deleted_at IS NULL', ['admin']);
         
         const workers = rows.map(u => ({
             id: u.id,
             email: u.email,
             name: u.name || 'Worker',
-            role: u.role || 'worker'
+            role: u.role || 'worker',
+            phone: u.phone_number,
+            department: u.department
         }));
             
         res.status(200).json({ success: true, count: workers.length, employees: workers });
@@ -22,13 +27,16 @@ const getEmployees = async (req, res, next) => {
     }
 };
 
+/**
+ * Creates a new employee account with support for phone and department.
+ */
 const createEmployee = async (req, res, next) => {
     try {
         if (req.user?.role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden: Admin access required.' });
         }
 
-        const { email, password } = req.body;
+        const { email, password, name, phone, department, role } = req.body;
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password required' });
         }
@@ -44,9 +52,16 @@ const createEmployee = async (req, res, next) => {
         const password_hash = await bcrypt.hash(password, saltRounds);
 
         await DbService.query(`
-            INSERT INTO "Users" (email, password_hash, name, role)
-            VALUES ($1, $2, $3, $4)
-        `, [normalizedEmail, password_hash, email.split('@')[0], 'worker']);
+            INSERT INTO "Users" (email, password_hash, name, role, phone_number, department)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        `, [
+            normalizedEmail, 
+            password_hash, 
+            name || email.split('@')[0], 
+            role || 'worker',
+            phone || null,
+            department || null
+        ]);
         
         res.status(201).json({ success: true, message: 'Employee created successfully' });
     } catch (error) {

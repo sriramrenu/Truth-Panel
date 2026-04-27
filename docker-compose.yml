@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   truth-panel:
+    container_name: truth-panel-api
     build:
       context: .
       dockerfile: Dockerfile
@@ -16,7 +17,18 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - flyway
+      - redis
+    networks:
+      - truth_network
     restart: on-failure
+    labels:
+      logging: "promtail"
+
+  redis:
+    image: redis:alpine
+    networks:
+      - truth_network
+    restart: always
 
   flyway:
     image: flyway/flyway:latest
@@ -27,7 +39,52 @@ services:
       - FLYWAY_URL=${FLYWAY_URL}
       - FLYWAY_USER=${FLYWAY_USER}
       - FLYWAY_PASSWORD=${FLYWAY_PASSWORD}
+    networks:
+      - truth_network
     restart: on-failure
+
+  # --- OBSERVABILITY STACK (Internal TATA Only) ---
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/infra/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/tmp/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - truth_network
+    restart: always
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./config/infra/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log:/var/log
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - truth_network
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3200:3000" # Mapped to 3200 to avoid conflicts
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # You should change this in production
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - truth_network
+    depends_on:
+      - loki
+    restart: always
+
+volumes:
+  loki_data:
+  grafana_data:
 
 networks:
   truth_network:

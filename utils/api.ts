@@ -224,7 +224,7 @@ export const loginUser = async (email: string, password?: string) => {
 };
 
 export const fetchUserProfile = async () => {
-    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
         headers: await getAuthHeaders()
     });
     return response.json();

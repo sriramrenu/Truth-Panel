@@ -203,11 +203,11 @@ export const fetchEmployees = async () => {
     return response.json();
 };
 
-export const createEmployee = async (email: string, password?: string) => {
+export const createEmployee = async (email: string, password: string) => {
     const response = await fetchWithAuth(`${API_BASE_URL}/admin/employee`, {
         method: 'POST',
         headers: await getAuthHeaders(),
-        body: JSON.stringify({ email, password: password || '12345678' })
+        body: JSON.stringify({ email, password })
     });
     return response.json();
 };

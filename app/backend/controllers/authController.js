@@ -6,9 +6,9 @@ const logger = require('../utils/logger');
 
 const otpStore = new Map();
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_SERVER || 'smtp-relay.brevo.com',
+    host: process.env.SMTP_SERVER,
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false, // true for 465, false for other ports
+    secure: process.env.SMTP_PORT === '465',
     auth: {
         user: process.env.SMTP_LOGIN,
         pass: process.env.SMTP_KEY,

@@ -16,15 +16,21 @@ const verifyAuth = async (req, res, next) => {
         }
 
         const token = authHeader.split(' ')[1];
-        const JWT_SECRET = process.env.JWT_SECRET || 'you_should_set_a_jwt_secret_in_env_file';
-        jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        const JWT_SECRET = process.env.JWT_SECRET;
+        
+        if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+            throw new Error('CRITICAL: JWT_SECRET must be set in production!');
+        }
+
+        const secret = JWT_SECRET || 'dev_secret_only';
+        jwt.verify(token, secret, (err, decoded) => {
             if (err) {
-                console.error('JWT Validation Error:', err.message);
+                logger.error({ msg: 'JWT Validation Failure', error: err.message });
                 return res.status(401).json({ 
                     success: false, 
                     message: 'Unauthorized: Token failed validation.' 
                 });
-            }
+            }
             req.user = decoded;
             next();
         });

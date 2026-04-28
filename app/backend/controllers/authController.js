@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const DbService = require('../config/dbConfig');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
 
 const otpStore = new Map();
 const transporter = nodemailer.createTransport({
@@ -115,16 +116,21 @@ const login = async (req, res, next) => {
             return res.status(401).json({ error: 'Invalid Email or Password' });
         }
 
-        const JWT_SECRET = process.env.JWT_SECRET || 'you_should_set_a_jwt_secret_in_env_file';
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+            throw new Error('CRITICAL: JWT_SECRET missing in production!');
+        }
+        const secret = JWT_SECRET || 'dev_secret_only';
+
         const accessToken = jwt.sign(
             { id: user.id, email: user.email, role: user.role, name: user.name }, 
-            JWT_SECRET, 
+            secret, 
             { expiresIn: '15m' }
         );
 
         const refreshToken = jwt.sign(
             { id: user.id }, 
-            JWT_SECRET, 
+            secret, 
             { expiresIn: '7d' }
         );
         
@@ -163,9 +169,13 @@ const refreshToken = async (req, res, next) => {
             return res.status(401).json({ error: 'Refresh token is required' });
         }
 
-        const JWT_SECRET = process.env.JWT_SECRET || 'you_should_set_a_jwt_secret_in_env_file';
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+            throw new Error('CRITICAL: JWT_SECRET missing in production!');
+        }
+        const secret = JWT_SECRET || 'dev_secret_only';
         
-        jwt.verify(refresh_token, JWT_SECRET, async (err, decoded) => {
+        jwt.verify(refresh_token, secret, async (err, decoded) => {
             if (err) {
                 return res.status(401).json({ error: 'Invalid or expired refresh token' });
             }
@@ -178,7 +188,7 @@ const refreshToken = async (req, res, next) => {
 
             const accessToken = jwt.sign(
                 { id: user.id, email: user.email, role: user.role, name: user.name }, 
-                JWT_SECRET, 
+                secret, 
                 { expiresIn: '15m' }
             );
 

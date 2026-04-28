@@ -13,9 +13,9 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:5000/api
       - PORT=3000
-      - REDIS_URL=${REDIS_URL}
       - JWT_SECRET=${JWT_SECRET}
       - DATABASE_URL=${DATABASE_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     depends_on:
       - flyway
       - redis
@@ -45,9 +45,9 @@ services:
       dockerfile: Dockerfile
     command: node app/backend/worker.js
     environment:
-      - REDIS_URL=${REDIS_URL}
       - JWT_SECRET=${JWT_SECRET}
       - DATABASE_URL=${DATABASE_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     depends_on:
       - redis
     networks:

@@ -8,13 +8,42 @@ const { globalLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.API_PORT;
 
 // 1. TATA PRODUCTION HARDENING
 // =============================================================================
 app.set('trust proxy', 1);
-app.use(helmet());
-app.use(cors());
+
+// 1.1 Secure Headers (TATA Compliance)
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", ...(process.env.CSP_CONNECT_SRC ? process.env.CSP_CONNECT_SRC.split(' ') : [])]
+        }
+    }
+}));
+
+// 1.2 Multi-Origin Production CORS
+const whitelist = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin || whitelist.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Access blocked by Truth Panel Security Policy (CORS)'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-device-fingerprint'],
+    credentials: true,
+    maxAge: 86400 // Cache preflight requests for 24h
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // Replace standard console logging with high-speed Pino JSON stream

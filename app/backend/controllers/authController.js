@@ -4,7 +4,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
-const otpStore = new Map();
+const otpStore = new Map();
+
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_SERVER,
     port: parseInt(process.env.SMTP_PORT || '587'),
@@ -22,14 +23,18 @@ const sendOTP = async (req, res) => {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedEmail = email.trim().toLowerCase();
+
         const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 AND deleted_at IS NULL LIMIT 1', [normalizedEmail]);
         if (rows.length === 0) {
             return res.status(404).json({ success: false, error: "mail doesn't exists" });
-        }
+        }
+
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
-        otpStore.set(normalizedEmail, { otp, expiresAt });
+        const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+
+        otpStore.set(normalizedEmail, { otp, expiresAt });
+
         const mailOptions = {
             from: '"Truth Panel" <r.sriramrenu@gmail.com>',
             to: normalizedEmail,
@@ -52,10 +57,10 @@ const verifyOTP = async (req, res) => {
         if (!email || !otp) {
             return res.status(400).json({ error: 'Email and OTP are required' });
         }
-        
+
         const normalizedEmail = email.trim().toLowerCase();
         const storedData = otpStore.get(normalizedEmail);
-        
+
         if (!storedData) {
             return res.status(400).json({ error: 'OTP not requested or expired' });
         }
@@ -67,7 +72,8 @@ const verifyOTP = async (req, res) => {
 
         if (storedData.otp !== String(otp)) {
             return res.status(400).json({ error: 'Invalid OTP' });
-        }
+        }
+
         otpStore.delete(normalizedEmail);
 
         return res.status(200).json({ success: true, message: 'OTP verified successfully' });
@@ -83,16 +89,18 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ error: 'Email and new password are required' });
         }
 
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedEmail = email.trim().toLowerCase();
+
         const { rows } = await DbService.query('SELECT id FROM "Users" WHERE email = $1 AND deleted_at IS NULL LIMIT 1', [normalizedEmail]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'No user found with this email' });
         }
 
         const saltRounds = 10;
-        const password_hash = await bcrypt.hash(newPassword, saltRounds);
+        const password_hash = await bcrypt.hash(newPassword, saltRounds);
+
         await DbService.query('UPDATE "Users" SET password_hash = $1 WHERE email = $2', [password_hash, normalizedEmail]);
-        
+
         return res.status(200).json({ success: true, message: 'Password reset successfully' });
     } catch (error) {
         return res.status(500).json({ error: 'Failed to reset password' });
@@ -123,17 +131,17 @@ const login = async (req, res, next) => {
         const secret = JWT_SECRET || 'dev_secret_only';
 
         const accessToken = jwt.sign(
-            { id: user.id, email: user.email, role: user.role, name: user.name }, 
-            secret, 
+            { id: user.id, email: user.email, role: user.role, name: user.name },
+            secret,
             { expiresIn: '15m' }
         );
 
         const refreshToken = jwt.sign(
-            { id: user.id }, 
-            secret, 
+            { id: user.id },
+            secret,
             { expiresIn: '7d' }
         );
-        
+
         const auditLog = require('../utils/auditLogger');
         await auditLog(req, {
             action: 'login',
@@ -141,10 +149,10 @@ const login = async (req, res, next) => {
             recordId: user.id,
             newData: { email: user.email, role: user.role }
         });
-        
+
         res.status(200).json({
             success: true,
-            session: { 
+            session: {
                 access_token: accessToken,
                 refresh_token: refreshToken
             },
@@ -156,9 +164,9 @@ const login = async (req, res, next) => {
 const getProfile = (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
-    return res.status(200).json({ 
-        success: true, 
-        user: { email: user.email, name: user.name, role: user.role } 
+    return res.status(200).json({
+        success: true,
+        user: { email: user.email, name: user.name, role: user.role }
     });
 };
 
@@ -174,7 +182,7 @@ const refreshToken = async (req, res, next) => {
             throw new Error('CRITICAL: JWT_SECRET missing in production!');
         }
         const secret = JWT_SECRET || 'dev_secret_only';
-        
+
         jwt.verify(refresh_token, secret, async (err, decoded) => {
             if (err) {
                 return res.status(401).json({ error: 'Invalid or expired refresh token' });
@@ -187,8 +195,8 @@ const refreshToken = async (req, res, next) => {
             }
 
             const accessToken = jwt.sign(
-                { id: user.id, email: user.email, role: user.role, name: user.name }, 
-                secret, 
+                { id: user.id, email: user.email, role: user.role, name: user.name },
+                secret,
                 { expiresIn: '15m' }
             );
 

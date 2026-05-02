@@ -6,7 +6,7 @@ Truth Panel is a unified application comprising an Express.js backend API and a 
 The application has recently migrated away from serverless Vercel deployments and has been containerized natively for **Northflank**.
 We employ a **Unified Container Strategy**:
 - 🐳 **`Dockerfile`**: Builds a single, unified Node 20 alpine image.
-- 🚀 **`start.sh`**: Acts as the entry point script, launching the Express backend on `5000` (background) while spinning up the Next.js frontend on `3000` (foreground).
+- 🚀 **`start.sh`**: Acts as the entry point script, launching the Express backend (port defined by `API_PORT`) and the Next.js frontend (port defined by `APP_PORT`).
 - 🔀 **Next.js Rewrites**: The frontend transparently intercepts API requests (`/api/...`) and routes them locally pointing to your backend so that you avoid CORS issues entirely and only expose a single port.
 
 ## Authentication
@@ -16,31 +16,21 @@ The frontend gracefully intercepts any 401 Unauthorized errors from the API due 
 
 ## Running Locally
 
-To work on this repository locally, you should be spinning up both services parallelly:
-
+1. Create a `.env` file based on the environment variables defined in your orchestration panel.
+2. Build and start the services:
 ```bash
-# 1. Install Dependencies
-npm install
-
-# 2. Setup your .env file
-# Ensure you have DATABASE_URL, REDIS_URL, BREVO configuration, JWT_SECRET, etc.
-# Check out .env.example (or the provided .env) for details.
-
-# 3. Start Backend manually
-npm run dev:backend
-
-# 4. In a separate terminal, Start Frontend
-npm run dev
+docker-compose up -d --build
 ```
 
 Alternatively, you can test the production Docker layout right away:
 ```bash
 docker build -t truth-panel .
-docker run -p 3000:3000 truth-panel
+docker run -p ${APP_PORT}:${APP_PORT} truth-panel
 ```
 
 ## Hosted Deployment (Northflank)
-1. Add this repository directly to Northflank as a Service.
+
+1. Connect your GitHub repository to Northflank.
 2. Select your `Dockerfile` as the build context.
-3. Configure the container to bind to port **3000** over HTTP.
+3. Configure the container to bind to port **${APP_PORT}** over HTTP.
 4. Supply your runtime Secrets/Variables via the Northflank environment panel.

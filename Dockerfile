@@ -4,7 +4,7 @@ RUN apk add --no-cache python3 make g++ libc6-compat
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 COPY . .
 
@@ -15,8 +15,9 @@ RUN npm run build
 
 RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 
-EXPOSE 3000
+ARG APP_PORT
+EXPOSE ${APP_PORT}
 
-ENV PORT=3000
+ENV PORT=${APP_PORT}
 ENV HOSTNAME="0.0.0.0"
 CMD ["./start.sh"]

@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['${INTERNAL_HOST}:${PROMETHEUS_PORT}']
+
+  - job_name: 'truth-panel-infra'
+    static_configs:
+      - targets: ['${DATABASE_HOST}:${NODE_EXPORTER_PORT}'] # Assuming node-exporter or similar on host

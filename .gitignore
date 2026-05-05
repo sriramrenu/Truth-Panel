@@ -42,3 +42,6 @@ next-env.d.ts
 
 # database
 app/backend/db/schema.sql
+
+# documents
+backend_production_documentation.md

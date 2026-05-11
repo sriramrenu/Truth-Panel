@@ -56,6 +56,22 @@ export const createSurvey = async (title: string, description: string, questions
     return response.json();
 };
 
+export const updateSurveyAPI = async (id: string, title: string, description: string, questions: any[], start_time?: string, end_time?: string, points_per_question?: number) => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys/${id}`, {
+        method: 'PATCH',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ title, description, questions, start_time, end_time, points_per_question })
+    });
+    return response.json();
+};
+
+export const fetchSurveyById = async (id: string) => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys/${id}`, {
+        headers: await getAuthHeaders(),
+    });
+    return response.json();
+};
+
 export const fetchAllSurveys = async () => {
     const response = await fetchWithAuth(`${API_BASE_URL}/surveys`, {
         headers: await getAuthHeaders(),

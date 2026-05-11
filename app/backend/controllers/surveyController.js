@@ -248,10 +248,120 @@ const deleteSurvey = async (req, res, next) => {
     }
 };
 
+const getSurveyById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        // 1. Get Survey and Latest Version
+        const surveyRes = await DbService.query(`
+            SELECT s.id, s.category, sv.id as version_id, sv.title, sv.description, 
+                   sv.start_time, sv.end_time, sv.points_per_question, sv.version_number
+            FROM "Surveys" s
+            JOIN "Survey_Versions" sv ON s.id = sv.survey_id
+            WHERE s.id = $1 AND s.deleted_at IS NULL
+            ORDER BY sv.version_number DESC
+            LIMIT 1
+        `, [id]);
+        
+        if (surveyRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Survey not found' });
+        }
+        
+        const survey = surveyRes.rows[0];
+        
+        // 2. Get Questions
+        const questionsRes = await DbService.query(`
+            SELECT id, question_text, question_type, options, order_index, is_required, logic 
+            FROM "Questions" 
+            WHERE survey_version_id = $1 AND deleted_at IS NULL 
+            ORDER BY order_index
+        `, [survey.version_id]);
+        
+        survey.Questions = questionsRes.rows;
+        
+        res.status(200).json({ success: true, data: survey });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateSurvey = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { title, description, questions, start_time, end_time, points_per_question, category } = req.body;
+        
+        if (!title || !questions || !Array.isArray(questions)) {
+            return res.status(400).json({ success: false, message: 'Invalid payload: title and questions array required' });
+        }
+
+        // 1. Get Latest Version
+        const versionRes = await DbService.query(`
+            SELECT id, version_number FROM "Survey_Versions" 
+            WHERE survey_id = $1 ORDER BY version_number DESC LIMIT 1
+        `, [id]);
+        
+        if (versionRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Survey version not found' });
+        }
+        
+        const versionId = versionRes.rows[0].id;
+
+        // 2. Check if version has any sessions
+        const sessionRes = await DbService.query('SELECT id FROM "Sessions" WHERE survey_version_id = $1 AND deleted_at IS NULL', [versionId]);
+        
+        if (sessionRes.rows.length > 0) {
+            return res.status(400).json({ success: false, message: 'Cannot update a live survey version.' });
+        }
+
+        // 3. Update Survey Version
+        await DbService.query(`
+            UPDATE "Survey_Versions"
+            SET title = $1, description = $2, start_time = $3, end_time = $4, points_per_question = $5, updated_at = NOW()
+            WHERE id = $6
+        `, [title, description, start_time || null, end_time || null, points_per_question || 1, versionId]);
+
+        // 4. Update Questions (Soft delete old, Insert new)
+        await DbService.query('UPDATE "Questions" SET deleted_at = NOW() WHERE survey_version_id = $1', [versionId]);
+        
+        if (questions.length > 0) {
+            for (let i = 0; i < questions.length; i++) {
+                const q = questions[i];
+                await DbService.query(`
+                    INSERT INTO "Questions" (survey_version_id, question_text, question_type, options, order_index, is_required, logic)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `, [
+                    versionId,
+                    q.questionText || q.question_text,
+                    q.type || q.question_type || 'MCQ',
+                    JSON.stringify(q.options || []),
+                    q.order_index || i,
+                    q.is_required !== undefined ? q.is_required : true,
+                    JSON.stringify(q.logic || {})
+                ]);
+            }
+        }
+
+        const auditLog = require('../utils/auditLogger');
+        await auditLog(req, {
+            action: 'update',
+            table: 'Survey_Versions',
+            recordId: versionId,
+            newData: { title, points_per_question }
+        });
+
+        res.status(200).json({ success: true, message: 'Survey updated successfully' });
+        await cache.del(CACHE_KEYS.SURVEY_TEMPLATES);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createSurvey,
     getAllSurveys,
+    getSurveyById,
     createSession,
     getActiveSession,
+    updateSurvey,
     deleteSurvey
 };

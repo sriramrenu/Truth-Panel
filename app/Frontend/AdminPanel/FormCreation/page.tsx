@@ -21,6 +21,7 @@ interface TruthPanelForm {
   description: string;
   createdAt: string;
   questions: FormQuestion[];
+  isDraft?: boolean;
 }
 
 type SortOption = 'latest' | 'oldest' | 'name';
@@ -172,6 +173,7 @@ export default function FormCreation() {
             title: s.title,
             description: s.description || '',
             createdAt: s.created_at,
+            isDraft: !s.Sessions || s.Sessions.length === 0,
             questions: (s.Questions || []).map((q: any) => ({
               id: q.id,
               type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
@@ -270,12 +272,26 @@ export default function FormCreation() {
             ) : (
               <>
                 {paginatedForms.map((form) => (
-                  <article key={form.id} className="rounded-xl bg-white p-4 shadow-sm">
+                  <article key={form.id} className="rounded-xl bg-white p-4 shadow-sm relative">
+                    {form.isDraft && (
+                      <span className="absolute right-4 top-4 rounded-full bg-[var(--OffWhite)] border border-[color:var(--OffBlack)]/15 px-2 py-0.5 font-[var(--font-inter)] text-[10px] font-medium text-[var(--OffBlack)]/60">
+                        Draft
+                      </span>
+                    )}
                     <p className="font-[var(--font-poppins)] text-base font-medium">{form.title || 'Untitled Form'}</p>
                     <p className="mt-1 font-[var(--font-inter)] text-xs text-[var(--OffBlack)]/65">
                       {form.questions.length} questions
                     </p>
                     <div className="mt-3 flex justify-end">
+                      {form.isDraft && (
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/Frontend/AdminPanel/FormCreation/Builder?id=${form.id}`)}
+                          className="rounded-lg border border-[var(--PBlue)] px-3 py-1.5 mr-2 font-[var(--font-poppins)] text-xs text-[var(--PBlue)] hover:bg-[var(--OffWhite)]"
+                        >
+                          Edit
+                        </button>
+                      )}
 
                       <button
                         type="button"

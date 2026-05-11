@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef } from 'react';
 
 type QuestionType = 'multiple_choice' | 'checkboxes' | 'short_text';
@@ -58,6 +58,9 @@ const getTypeLabel = (type: QuestionType) => {
 
 export default function FormBuilderPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const editingId = searchParams.get('id');
+
 	const [formId, setFormId] = useState(createId());
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
@@ -81,33 +84,66 @@ export default function FormBuilderPage() {
 		optionRefs.current = [];
 	}, [currentQuestionIndex]);
 
-	useEffect(() => {
-		const draft = sessionStorage.getItem('truth_panel_draft');
-		if (draft) {
-			try {
-				const parsed = JSON.parse(draft);
-				setStartDateTime(parsed.startDateTime || '');
-				setEndDateTime(parsed.endDateTime || '');
-				setPointsPerQuestion(parsed.pointsPerQuestion || 1);
-
-				if (
-					parsed.startDateTime &&
-					parsed.endDateTime &&
-					parsed.endDateTime > parsed.startDateTime
-				) {
-					setSettingsCompleted(true);
-				}
-				if (parsed.questions && parsed.questions.length > 0) {
-					setFormId(parsed.id || createId());
-					setTitle(parsed.title || '');
-					setDescription(parsed.description || '');
-					setQuestions(parsed.questions.map((q: FormQuestion) => ({ ...q, isEditable: true })));
-					setCurrentQuestionIndex(parsed.currentQuestionIndex || 0);
+	useEffect(() => {
+		const loadDraft = async () => {
+			// 1. Check for database-backed draft (by ID in URL)
+			if (editingId) {
+				try {
+					const { fetchSurveyById } = await import('../../../../../utils/api');
+					const res = await fetchSurveyById(editingId);
+					if (res?.success && res.data) {
+						const d = res.data;
+						setFormId(d.id);
+						setTitle(d.title || '');
+						setDescription(d.description || '');
+						setStartDateTime(d.start_time ? new Date(d.start_time).toISOString().slice(0, 16) : '');
+						setEndDateTime(d.end_time ? new Date(d.end_time).toISOString().slice(0, 16) : '');
+						setPointsPerQuestion(d.points_per_question || 1);
+						setQuestions((d.Questions || []).map((q: any) => ({
+							id: q.id,
+							type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
+							questionText: q.question_text,
+							options: q.options || [],
+							isEditable: true
+						})));
+						setSettingsCompleted(true);
+						return; // Skip session storage if DB draft is found
+					}
+				} catch (err) {
+					console.error("Failed to load survey from DB", err);
 				}
-			} catch {
 			}
-		}
-	}, []);
+
+			// 2. Fallback to session storage
+			const draft = sessionStorage.getItem('truth_panel_draft');
+			if (draft) {
+				try {
+					const parsed = JSON.parse(draft);
+					setStartDateTime(parsed.startDateTime || '');
+					setEndDateTime(parsed.endDateTime || '');
+					setPointsPerQuestion(parsed.pointsPerQuestion || 1);
+
+					if (
+						parsed.startDateTime &&
+						parsed.endDateTime &&
+						parsed.endDateTime > parsed.startDateTime
+					) {
+						setSettingsCompleted(true);
+					}
+					if (parsed.questions && parsed.questions.length > 0) {
+						setFormId(parsed.id || createId());
+						setTitle(parsed.title || '');
+						setDescription(parsed.description || '');
+						setQuestions(parsed.questions.map((q: FormQuestion) => ({ ...q, isEditable: true })));
+						setCurrentQuestionIndex(parsed.currentQuestionIndex || 0);
+					}
+				} catch {
+				}
+			}
+		};
+
+		loadDraft();
+	}, [editingId]);
 
 	const currentQuestion = questions[currentQuestionIndex] ?? createQuestion();
 	const canGoPrev = currentQuestionIndex > 0;
@@ -203,6 +239,46 @@ export default function FormBuilderPage() {
 		setDeleteTarget(null);
 	};
 
+	const handleSaveDraft = async () => {
+		try {
+			const { createSurvey, updateSurveyAPI } = await import('../../../../../utils/api');
+			const payload = {
+				title: title.trim() || 'Untitled Draft',
+				description: description.trim(),
+				questions: questions.map(q => ({
+					...q,
+					question_text: q.questionText,
+					question_type: q.type === 'multiple_choice' ? 'MCQ' : q.type,
+					options: q.type === 'short_text' ? [] : q.options
+				})),
+				start_time: startDateTime || undefined,
+				end_time: endDateTime || undefined,
+				points_per_question: pointsPerQuestion
+			};
+
+			let res;
+			if (editingId) {
+				res = await updateSurveyAPI(editingId, payload.title, payload.description, payload.questions, payload.start_time, payload.end_time, payload.points_per_question);
+			} else {
+				res = await createSurvey(payload.title, payload.description, payload.questions, payload.start_time, payload.end_time, payload.points_per_question);
+			}
+
+			if (res?.success) {
+				const { default: Swal } = await import('sweetalert2');
+				await Swal.fire({
+					title: 'Draft Saved',
+					text: 'Your progress has been saved to the database.',
+					icon: 'success',
+					confirmButtonColor: '#1C69AE',
+				});
+				sessionStorage.removeItem('truth_panel_draft');
+				router.push('/Frontend/AdminPanel/FormCreation');
+			}
+		} catch (err) {
+			console.error("Failed to save draft", err);
+		}
+	};
+
 	const persistAndGoPreview = () => {
 		const draft = {
 			id: formId,
@@ -222,22 +298,32 @@ export default function FormBuilderPage() {
 			currentQuestionIndex,
 		};
 		sessionStorage.setItem('truth_panel_draft', JSON.stringify(draft));
-		router.push('/Frontend/AdminPanel/FormCreation/Preview');
+		router.push(`/Frontend/AdminPanel/FormCreation/Preview${editingId ? `?id=${editingId}` : ''}`);
 	};
 
 	return (
 		<main className="min-h-screen bg-white text-[var(--OffBlack)]">
 			<div className="mx-auto flex min-h-screen w-full max-w-[100%] flex-col pb-36">
-				<header className="flex items-center gap-3 border-b border-[color:var(--OffBlack)]/8 px-4 py-3">
+				<header className="flex items-center justify-between border-b border-[color:var(--OffBlack)]/8 px-4 py-3">
+					<div className="flex items-center gap-3">
+						<button
+							type="button"
+							onClick={() => setShowDiscardConfirm(true)}
+							className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-[var(--OffWhite)] font-[var(--font-poppins)] text-lg"
+							aria-label="Go back"
+						>
+							<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
+						</button>
+						<h1 className="font-[var(--font-poppins)] text-lg font-medium">Form Builder</h1>
+					</div>
+
 					<button
 						type="button"
-						onClick={() => setShowDiscardConfirm(true)}
-						className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--OffBlack)]/15 bg-[var(--OffWhite)] font-[var(--font-poppins)] text-lg"
-						aria-label="Go back"
+						onClick={handleSaveDraft}
+						className="rounded-lg bg-[var(--OffWhite)] border border-[color:var(--OffBlack)]/15 px-3 py-1.5 font-[var(--font-poppins)] text-xs font-medium text-[var(--PBlue)]"
 					>
-						<img src="/BackArrow.svg" alt="Back" className="h-4 w-4 mr-[2px]" />
+						Save Draft
 					</button>
-					<h1 className="font-[var(--font-poppins)] text-lg font-medium">Form Builder</h1>
 				</header>
 
 				<section className="space-y-5 px-4 py-5">

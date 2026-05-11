@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Swal from 'sweetalert2';
 
 type AnswerValue = string | string[];
@@ -25,6 +25,9 @@ interface TruthPanelForm {
 
 export default function FormPreviewPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const editingId = searchParams.get('id');
+
 	const [form, setForm] = useState<TruthPanelForm | null>(null);
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
@@ -43,7 +46,7 @@ export default function FormPreviewPage() {
 				});
 				setCurrentIndex(parsed.currentQuestionIndex || 0);
 			}
-		} catch {
+		} catch {
 		}
 	}, []);
 
@@ -214,7 +217,7 @@ export default function FormPreviewPage() {
 				<footer className="space-y-2 pb-2 pt-3">
 					<button
 						type="button"
-						onClick={() => router.push('/Frontend/AdminPanel/FormCreation/Builder')}
+						onClick={() => router.push(`/Frontend/AdminPanel/FormCreation/Builder${editingId ? `?id=${editingId}` : ''}`)}
 						className="w-full rounded-xl border border-[color:var(--PBlue)] bg-white px-4 py-3 font-[var(--font-poppins)] text-sm font-medium text-[var(--PBlue)]"
 					>
 						Back to Builder
@@ -226,16 +229,41 @@ export default function FormPreviewPage() {
 							try {
 								const draft = sessionStorage.getItem('truth_panel_draft');
 								if (draft) {
-									const parsed = JSON.parse(draft);
-									const { createSurvey, startLiveSession } = await import('../../../../../utils/api');
-									const surveyRes = await createSurvey(
-										parsed.title || 'Untitled', 
-										parsed.description || '', 
-										parsed.questions,
-										parsed.startDateTime ? new Date(parsed.startDateTime).toISOString() : undefined,
-										parsed.endDateTime ? new Date(parsed.endDateTime).toISOString() : undefined,
-										parsed.pointsPerQuestion || 1
-									);
+									const parsed = JSON.parse(draft);
+									const { createSurvey, updateSurveyAPI, startLiveSession } = await import('../../../../../utils/api');
+									
+									let surveyRes;
+									if (editingId) {
+										surveyRes = await updateSurveyAPI(
+											editingId,
+											parsed.title || 'Untitled',
+											parsed.description || '',
+											parsed.questions.map((q: any) => ({
+												...q,
+												question_text: q.questionText,
+												question_type: q.type === 'multiple_choice' ? 'MCQ' : q.type,
+												options: q.type === 'short_text' ? [] : q.options
+											})),
+											parsed.startDateTime ? new Date(parsed.startDateTime).toISOString() : undefined,
+											parsed.endDateTime ? new Date(parsed.endDateTime).toISOString() : undefined,
+											parsed.pointsPerQuestion || 1
+										);
+										surveyRes.survey = { id: editingId }; 
+									} else {
+										surveyRes = await createSurvey(
+											parsed.title || 'Untitled', 
+											parsed.description || '', 
+											parsed.questions.map((q: any) => ({
+												...q,
+												question_text: q.questionText,
+												question_type: q.type === 'multiple_choice' ? 'MCQ' : q.type,
+												options: q.type === 'short_text' ? [] : q.options
+											})),
+											parsed.startDateTime ? new Date(parsed.startDateTime).toISOString() : undefined,
+											parsed.endDateTime ? new Date(parsed.endDateTime).toISOString() : undefined,
+											parsed.pointsPerQuestion || 1
+										);
+									}
 									
 									
 									if (surveyRes.success && surveyRes.survey) {

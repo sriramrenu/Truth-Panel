@@ -88,8 +88,16 @@ app.get('/', (req, res) => {
 // =============================================================================
 app.use(errorHandler);
 
-const { startMaintenance } = require('./services/notificationMaintenanceService');
-startMaintenance(); 
+// 4. PRODUCTION SCALE SERVICES (Background Workers & Schedulers)
+// =============================================================================
+// Ensure background processing is active in the application lifecycle
+require('./workers/submissionWorker'); 
+const { initScheduler } = require('./services/scheduler');
+require('./workers/schedulerWorker'); // Execution engine for distributed tasks
+
+if (process.env.NODE_ENV === 'production' || process.env.IS_DOCKER === 'true') {
+    initScheduler();
+}
 
 // 4. LIFECYCLE MANAGEMENT (Graceful Shutdown)
 // =============================================================================

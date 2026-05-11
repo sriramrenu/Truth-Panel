@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
 
 /**
  * Express middleware to verify custom JWT tokens.
@@ -44,4 +45,20 @@ const verifyAuth = async (req, res, next) => {
     }
 };
 
-module.exports = { verifyAuth };
+/**
+ * Middleware to restrict access based on user roles.
+ * Must be used after verifyAuth.
+ */
+const restrictTo = (...allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.user || !allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access Denied: You do not have permission to perform this action.' 
+            });
+        }
+        next();
+    };
+};
+
+module.exports = { verifyAuth, restrictTo };

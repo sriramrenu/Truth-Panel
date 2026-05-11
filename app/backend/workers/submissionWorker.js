@@ -1,112 +1,103 @@
 const { Worker } = require('bullmq');
 const redisConnection = require('../config/redisClient');
 const DbService = require('../config/dbConfig');
+const logger = require('../utils/logger');
 
 /**
- * Processes incoming responses, grouping them into Submissions and 
- * allocating rewards via the new Transactions ledger.
+ * Processes a completed Survey Submission.
+ * Groups points, updates the transaction ledger, and triggers milestones.
  */
-const worker = new Worker('FormSubmissionsQueue', async job => {
-    const { session_id, question_id, user_id, answer_value } = job.data;
+const worker = new Worker('survey-submissions', async job => {
+    const { submissionId, userId, pointsPerQuestion } = job.data;
+    const client = await DbService.getClient();
 
-    // 1. Ensure a Submission record exists for this session/user
-    // We use an upsert-like logic to find or create the current 'in_progress' submission
-    let submissionRes = await DbService.query(`
-        SELECT id FROM "Submissions" 
-        WHERE session_id = $1 AND user_id = $2 AND status = 'in_progress' AND deleted_at IS NULL
-        LIMIT 1
-    `, [session_id, user_id]);
+    try {
+        await client.query('BEGIN');
 
-    let submissionId;
-    if (submissionRes.rows.length === 0) {
-        const newSub = await DbService.query(`
-            INSERT INTO "Submissions" (session_id, user_id, status)
-            VALUES ($1, $2, 'in_progress')
-            RETURNING id
-        `, [session_id, user_id]);
-        submissionId = newSub.rows[0].id;
-    } else {
-        submissionId = submissionRes.rows[0].id;
-    }
+        // 1. Calculate Total Score for this submission
+        const countRes = await client.query(
+            'SELECT COUNT(*) FROM "Responses" WHERE submission_id = $1',
+            [submissionId]
+        );
+        const questionCount = parseInt(countRes.rows[0].count);
+        const totalPoints = questionCount * pointsPerQuestion;
 
-    // 2. Capture the current question text snapshot for historical integrity
-    const questionRes = await DbService.query('SELECT question_text FROM "Questions" WHERE id = $1', [question_id]);
-    if (questionRes.rows.length === 0) throw new Error('Question not found');
-    const questionText = questionRes.rows[0].question_text;
+        // 2. Fetch Survey Title for the ledger
+        const surveyInfo = await client.query(`
+            SELECT sv.title, s.created_by 
+            FROM "Submissions" sub
+            JOIN "Sessions" sess ON sub.session_id = sess.id
+            JOIN "Survey_Versions" sv ON sess.survey_version_id = sv.id
+            JOIN "Surveys" s ON sv.survey_id = s.id
+            WHERE sub.id = $1
+        `, [submissionId]);
+        
+        const { title, created_by } = surveyInfo.rows[0];
 
-    // 3. Record the Response
-    const responseDb = await DbService.query(`
-        INSERT INTO "Responses" (submission_id, question_id, question_text_snapshot, answer)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-    `, [submissionId, question_id, questionText, String(answer_value)]);
-    
-    const responseData = responseDb.rows[0];
-
-    // 4. Handle Rewards via Transactions
-    const sessionRes = await DbService.query(`
-        SELECT sv.title, sv.points_per_question 
-        FROM "Sessions" s
-        JOIN "Survey_Versions" sv ON s.survey_version_id = sv.id
-        WHERE s.id = $1
-    `, [session_id]);
-    
-    if (sessionRes.rows.length > 0) {
-        const config = sessionRes.rows[0];
-        const points = config.points_per_question || 1;
-        const surveyTitle = config.title || 'Survey response';
-
-        // Log the earning transaction
-        await DbService.query(`
+        // 3. Log the Transaction (The Ledger)
+        await client.query(`
             INSERT INTO "Transactions" (user_id, submission_id, amount, type, description)
             VALUES ($1, $2, $3, 'earn', $4)
-        `, [user_id, submissionId, points, `Earned for "${surveyTitle}"`]);
+        `, [userId, submissionId, totalPoints, `Earned for completion of "${title}"`]);
 
-        // 5. Participation Milestones (Admin Notifications)
-        try {
-            const { createNotification } = require('../controllers/notificationController');
-            const sessionMeta = await DbService.query(`
-                SELECT sv.survey_id, s.started_by 
-                FROM "Sessions" s
-                JOIN "Survey_Versions" sv ON s.survey_version_id = sv.id
-                WHERE s.id = $1
-            `, [session_id]);
-            
-            const { survey_id, started_by } = sessionMeta.rows[0];
+        // 4. Update the Submission Status to 'processed' (if you have such a state)
+        await client.query('UPDATE "Submissions" SET updated_at = NOW() WHERE id = $1', [submissionId]);
 
-            if (started_by) {
-                const { rows: workers } = await DbService.query("SELECT COUNT(*) FROM \"Users\" WHERE role = 'worker'");
+        await client.query('COMMIT');
+
+        // 5. Participation Milestones (Notify the Survey Creator)
+        if (created_by) {
+            try {
+                const { rows: workers } = await client.query("SELECT COUNT(*) FROM \"Users\" WHERE role = 'worker'");
                 const totalWorkers = parseInt(workers[0].count);
 
-                const { rows: participants } = await DbService.query(`
+                const { rows: participants } = await client.query(`
                     SELECT COUNT(DISTINCT user_id) FROM "Submissions" 
-                    WHERE session_id IN (SELECT id FROM "Sessions" WHERE survey_version_id IN (SELECT id FROM "Survey_Versions" WHERE survey_id = $1))
-                      AND status = 'submitted'
-                `, [survey_id]);
+                    WHERE session_id IN (
+                        SELECT id FROM "Sessions" WHERE survey_version_id IN (
+                            SELECT id FROM "Survey_Versions" WHERE survey_id = (
+                                SELECT survey_id FROM "Survey_Versions" WHERE title = $1 LIMIT 1
+                            )
+                        )
+                    ) AND status = 'submitted'
+                `, [title]);
+                
                 const participantCount = parseInt(participants[0].count);
 
                 if (totalWorkers > 0) {
                     const percent = (participantCount / totalWorkers) * 100;
                     const milestones = [50, 80, 100];
                     for (const m of milestones) {
+                        // Notify if exactly hitting a milestone
                         if (percent >= m && (percent - (1/totalWorkers)*100) < m) {
+                            const { createNotification } = require('../controllers/notificationController');
                             await createNotification(
-                                started_by,
-                                `Participation Milestone: ${m}%`,
-                                `Survey "${surveyTitle}" has reached ${m}% participation.`,
-                                'submission_scored', // Using an existing key from V2 migration
-                                survey_id
+                                created_by,
+                                `Milestone: ${m}% Reached!`,
+                                `Survey "${title}" has reached ${m}% participation.`,
+                                'submission_scored'
                             );
                         }
                     }
                 }
+            } catch (notifErr) {
+                logger.error('Milestone processing failed:', notifErr);
             }
-        } catch (err) {
-            console.error('Milestone notification error:', err);
         }
+
+        logger.info(`✅ Processed Submission ${submissionId}: User ${userId} earned ${totalPoints} points.`);
+        return { success: true, submissionId, totalPoints };
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        logger.error(`❌ Worker Error for Submission ${submissionId}:`, error);
+        throw error;
+    } finally {
+        client.release();
     }
-    
-    return { success: true, responseId: responseData.id, submissionId };
-}, { connection: redisConnection });
+}, { 
+    connection: redisConnection,
+    concurrency: 5 // Process 5 submissions in parallel per worker container
+});
 
 module.exports = worker;

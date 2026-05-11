@@ -37,8 +37,10 @@ const createSurveySchema = z.object({
 // Submission Schemas
 const submissionSchema = z.object({
     session_id: uuidSchema,
-    question_id: uuidSchema,
-    answer_value: z.union([z.string(), z.number()])
+    answers: z.array(z.object({
+        question_id: uuidSchema,
+        answer: z.union([z.string(), z.number()])
+    })).min(1)
 });
 
 module.exports = {

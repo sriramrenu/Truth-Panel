@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   async rewrites() {
     const apiPort = process.env.API_PORT;
     const internalHost = process.env.INTERNAL_HOST;

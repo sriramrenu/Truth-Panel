@@ -49,15 +49,8 @@ export default function FormCreation() {
     });
   }, [forms, sortOption]);
 
-  const totalFormPages = Math.max(1, Math.ceil(sortedForms.length / formsPerPage));
-  const formStartIndex = (formPage - 1) * formsPerPage;
-  const paginatedForms = sortedForms.slice(formStartIndex, formStartIndex + formsPerPage);
-
-  useEffect(() => {
-    if (formPage > totalFormPages) {
-      setFormPage(totalFormPages);
-    }
-  }, [formPage, totalFormPages]);
+  // Server-side paginated data: we use forms directly
+  const paginatedForms = forms;
 
   useEffect(() => {
     setFormPage(1);
@@ -160,34 +153,40 @@ export default function FormCreation() {
     }
   };
 
+  const [totalFormPages, setTotalFormPages] = useState(1);
+
+  const loadForms = async () => {
+    try {
+      const { fetchAllSurveys } = await import('../../../../utils/api');
+      const res = await fetchAllSurveys(formPage, formsPerPage);
+      if (res?.success) {
+        setForms((res.data || []).map((s: any) => ({
+          id: s.id || s.survey_id,
+          title: s.title,
+          description: s.description || '',
+          createdAt: s.created_at,
+          isDraft: !s.Sessions || s.Sessions.length === 0,
+          questions: (s.Questions || []).map((q: any) => ({
+            id: q.id,
+            type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
+            questionText: q.question_text,
+            options: q.options || [],
+          })),
+        })));
+        
+        if (res.pagination) {
+          setTotalFormPages(res.pagination.totalPages || 1);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load forms', err);
+    }
+  };
+
   useEffect(() => {
     sessionStorage.removeItem('truth_panel_draft');
-
-    const loadForms = async () => {
-      try {
-        const { fetchAllSurveys } = await import('../../../../utils/api');
-        const res = await fetchAllSurveys();
-        if (res?.success) {
-          setForms((res.data || []).map((s: any) => ({
-            id: s.id,
-            title: s.title,
-            description: s.description || '',
-            createdAt: s.created_at,
-            isDraft: !s.Sessions || s.Sessions.length === 0,
-            questions: (s.Questions || []).map((q: any) => ({
-              id: q.id,
-              type: q.question_type === 'MCQ' ? 'multiple_choice' : q.question_type,
-              questionText: q.question_text,
-              options: q.options || [],
-            })),
-          })));
-        }
-      } catch (err) {
-        console.error('Failed to load forms', err);
-      }
-    };
     loadForms();
-  }, []);
+  }, [formPage, formsPerPage, sortOption]);
 
   return (
     <main className="min-h-screen bg-[var(--OffWhite)] text-[var(--OffBlack)]">

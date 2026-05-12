@@ -29,7 +29,12 @@ const initScheduler = async () => {
             repeat: { pattern: '*/5 * * * *' }
         });
 
-        // 3. Refresh Leaderboard Materialized View (Every 10 minutes)
+        // 3. Survey End-Time Maintenance (Every 5 minutes)
+        await schedulerQueue.add('survey-maintenance', {}, {
+            repeat: { pattern: '*/5 * * * *' }
+        });
+
+        // 4. Refresh Leaderboard Materialized View (Every 10 minutes)
         await schedulerQueue.add('refresh-leaderboard', {}, {
             repeat: { pattern: '*/10 * * * *' }
         });

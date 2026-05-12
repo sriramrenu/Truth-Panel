@@ -72,8 +72,8 @@ export const fetchSurveyById = async (id: string) => {
     return response.json();
 };
 
-export const fetchAllSurveys = async () => {
-    const response = await fetchWithAuth(`${API_BASE_URL}/surveys`, {
+export const fetchAllSurveys = async (page: number = 1, limit: number = 10) => {
+    const response = await fetchWithAuth(`${API_BASE_URL}/surveys?page=${page}&limit=${limit}`, {
         headers: await getAuthHeaders(),
     });
     return response.json();

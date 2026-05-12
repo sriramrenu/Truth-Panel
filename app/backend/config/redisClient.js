@@ -1,7 +1,7 @@
 const Redis = require('ioredis');
 
 // 1. Resolve Redis Configuration 
-const REDIS_URL = `redis://:${process.env.REDIS_PASSWORD}@redis:6379`;
+const REDIS_URL = `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST || 'redis'}:${process.env.REDIS_PORT || 6379}`;
 
 const redisConnection = new Redis(REDIS_URL, {
     maxRetriesPerRequest: null, 

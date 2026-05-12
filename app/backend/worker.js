@@ -7,7 +7,7 @@ require('dotenv').config();
 const logger = require('./utils/logger');
 const worker = require('./workers/submissionWorker');
 
-logger.info('⚙️ Truth Panel Background Worker Started');
+logger.info('Truth Panel Background Worker Started');
 
 // Handle Shutdown
 const shutdown = async () => {

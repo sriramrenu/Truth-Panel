@@ -86,15 +86,23 @@ const createSurvey = async (req, res, next) => {
 
 const getAllSurveys = async (req, res, next) => {
     try {
-        let templates = await cache.get(CACHE_KEYS.SURVEY_TEMPLATES);
-        
-        if (!templates) {
-            // Optimized query: Fetches latest versions only, without N+1 loop
-            const { rows: surveys } = await DbService.query(`
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const CACHE_KEY = `${CACHE_KEYS.SURVEY_TEMPLATES}_${page}_${limit}`;
+        let result = await cache.get(CACHE_KEY);
+
+        if (!result) {
+            // 1. Get Total Count
+            const countRes = await DbService.query('SELECT COUNT(*) FROM "Surveys" WHERE deleted_at IS NULL');
+            const totalCount = parseInt(countRes.rows[0].count);
+
+            // 2. Get Paginated Data
+            const surveysRes = await DbService.query(`
                 SELECT 
-                    s.id as survey_id, s.category, 
-                    sv.id as version_id, sv.title, sv.description, 
-                    sv.start_time, sv.end_time, sv.points_per_question, sv.version_number,
+                    s.id as survey_id, s.category, s.created_at,
+                    sv.id as version_id, sv.title, sv.description, sv.points_per_question, sv.version_number,
                     COALESCE(
                         json_agg(
                             json_build_object(
@@ -117,13 +125,23 @@ const getAllSurveys = async (req, res, next) => {
                   )
                 GROUP BY s.id, sv.id
                 ORDER BY s.created_at DESC
-            `);
+                LIMIT $1 OFFSET $2
+            `, [limit, offset]);
             
-            templates = surveys;
-            await cache.set(CACHE_KEYS.SURVEY_TEMPLATES, templates, 3600); // Cache for 1 hour
+            result = {
+                surveys: surveysRes.rows,
+                pagination: {
+                    page,
+                    limit,
+                    totalCount,
+                    totalPages: Math.ceil(totalCount / limit)
+                }
+            };
+            
+            await cache.set(CACHE_KEY, result, 3600);
         }
         
-        res.status(200).json({ success: true, data: templates });
+        res.status(200).json({ success: true, data: result.surveys, pagination: result.pagination });
     } catch (error) {
         next(error);
     }

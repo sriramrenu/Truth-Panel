@@ -9,18 +9,43 @@ const { z } = require('zod');
 const uuidSchema = z.string().uuid();
 
 // Authentication Schemas
-const loginSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(8)
-});
+const loginSchema = {
+    body: z.object({
+        email: z.string().email(),
+        password: z.string().min(8)
+    })
+};
 
-const registerSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
-    name: z.string().min(2).optional(),
-    phone: z.string().optional(),
-    department: z.string().optional()
-});
+const registerSchema = {
+    body: z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(2).optional(),
+        phone: z.string().optional(),
+        department: z.string().optional()
+    })
+};
+
+const sendOTPSchema = {
+    body: z.object({
+        email: z.string().email()
+    })
+};
+
+const verifyOTPSchema = {
+    body: z.object({
+        email: z.string().email(),
+        otp: z.string().length(6)
+    })
+};
+
+const resetPasswordSchema = {
+    body: z.object({
+        email: z.string().email(),
+        newPassword: z.string().min(8),
+        resetToken: z.string().min(10)
+    })
+};
 
 // Survey Schemas
 const createSurveySchema = z.object({
@@ -46,6 +71,9 @@ const submissionSchema = z.object({
 module.exports = {
     loginSchema,
     registerSchema,
+    sendOTPSchema,
+    verifyOTPSchema,
+    resetPasswordSchema,
     createSurveySchema,
     submissionSchema,
     uuidSchema

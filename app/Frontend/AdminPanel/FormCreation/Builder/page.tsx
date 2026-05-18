@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef } from 'react';
 
@@ -56,7 +56,7 @@ const getTypeLabel = (type: QuestionType) => {
 	return 'Short Text';
 };
 
-export default function FormBuilderPage() {
+function FormBuilderContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const editingId = searchParams.get('id');
@@ -623,5 +623,13 @@ export default function FormBuilderPage() {
 				</div>
 			) : null}
 		</main>
+	);
+}
+
+export default function FormBuilderPage() {
+	return (
+		<Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+			<FormBuilderContent />
+		</Suspense>
 	);
 }

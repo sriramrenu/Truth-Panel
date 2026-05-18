@@ -9,6 +9,17 @@ const logger = require('../utils/logger');
 const errorHandler = async (err, req, res, next) => {
     const errorId = require('crypto').randomUUID();
     
+    let safePayload = undefined;
+    if (req.body) {
+        safePayload = { ...req.body };
+        const sensitiveKeys = ['password', 'token', 'refresh_token', 'otp'];
+        for (const key of Object.keys(safePayload)) {
+            if (sensitiveKeys.some(sk => key.toLowerCase().includes(sk))) {
+                safePayload[key] = '[REDACTED]';
+            }
+        }
+    }
+
     // Log to JSON stdout (High-speed stream for Loki/Grafana)
     // We include full context: Request ID, Path, Method, User, and Stack Trace
     logger.error({
@@ -18,7 +29,7 @@ const errorHandler = async (err, req, res, next) => {
         path: req.path,
         method: req.method,
         userId: req.user?.id,
-        payload: req.body ? req.body : undefined,
+        payload: safePayload,
         userAgent: req.headers['user-agent']
     });
 

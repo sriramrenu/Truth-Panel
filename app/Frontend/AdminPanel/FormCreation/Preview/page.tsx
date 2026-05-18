@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Swal from 'sweetalert2';
 
@@ -23,7 +23,7 @@ interface TruthPanelForm {
 	questions: FormQuestion[];
 }
 
-export default function FormPreviewPage() {
+function FormPreviewContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const editingId = searchParams.get('id');
@@ -295,5 +295,13 @@ export default function FormPreviewPage() {
 				</footer>
 			</div>
 		</main>
+	);
+}
+
+export default function FormPreviewPage() {
+	return (
+		<Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+			<FormPreviewContent />
+		</Suspense>
 	);
 }

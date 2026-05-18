@@ -20,28 +20,41 @@ const getAuthHeaders = async () => {
 
 
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    let response = await fetch(url, options);
+    // 1. Ensure credentials are sent with every request so cookies are attached
+    const authOptions = {
+        ...options,
+        credentials: 'include' as RequestCredentials,
+    };
+
+    let response = await fetch(url, authOptions);
 
     if (response.status === 401 && typeof window !== 'undefined') {
-        const refreshToken = localStorage.getItem('truth_panel_refresh_token');
-        if (refreshToken) {
-            const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refresh_token: refreshToken })
-            });
-            if (refreshRes.ok) {
-                const data = await refreshRes.json();
-                if (data.session?.access_token) {
+        // 2. Attempt to refresh the token using the httpOnly cookie
+        const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include', // Automatically sends the refresh cookie
+            headers: { 'Content-Type': 'application/json' }
+        });
 
-                    localStorage.setItem('truth_panel_token', data.session.access_token);
+        if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            if (data.session?.access_token) {
+                // Update the stateless access token
+                localStorage.setItem('truth_panel_token', data.session.access_token);
 
-                    const newHeaders = await getAuthHeaders();
-                    return fetch(url, { ...options, headers: { ...options.headers, ...newHeaders } });
-                }
+                // Retry original request with new token
+                const newHeaders = await getAuthHeaders();
+                return fetch(url, { ...authOptions, headers: { ...authOptions.headers, ...newHeaders } });
+            }
+        } else {
+            // Refresh failed (session revoked/expired). Clear state and force login.
+            localStorage.removeItem('truth_panel_token');
+            if (window.location.pathname !== '/auth/login' && window.location.pathname !== '/login') {
+                 window.location.href = '/login';
             }
         }
     }
+    
     return response;
 };
 
@@ -264,11 +277,11 @@ export const verifyOtp = async (email: string, otp: string) => {
     return response.json();
 };
 
-export const resetPassword = async (email: string, newPassword: string) => {
+export const resetPassword = async (email: string, newPassword: string, resetToken: string) => {
     const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword })
+        body: JSON.stringify({ email, newPassword, resetToken })
     });
     return response.json();
 };

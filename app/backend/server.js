@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const logger = require('./utils/logger');
 const { globalLimiter } = require('./middleware/rateLimiter');
@@ -45,6 +46,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Replace standard console logging with high-speed Pino JSON stream
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
@@ -142,6 +144,9 @@ if (require.main === module || process.env.IS_DOCKER === 'true') {
         logger.info(`🚀 TATA Production Server running on port ${PORT}`);
     });
     
+    // Initialize WebSockets for real-time form collaboration
+    require('./sockets/formSocket').initSocket(server);
+
     // Override the gracefulShutdown closure with the actual server instance
     process.removeAllListeners('SIGTERM');
     process.removeAllListeners('SIGINT');

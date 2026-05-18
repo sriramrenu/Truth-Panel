@@ -16,6 +16,7 @@ function VerifyOTPContent() {
   const [step, setStep] = useState<'otp' | 'password' | 'success'>('otp');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetToken, setResetToken] = useState('');
 
   const getPasswordStrength = (password: string) => {
     let strength = 0;
@@ -76,6 +77,7 @@ function VerifyOTPContent() {
         throw new Error(data.error || 'Invalid OTP. Please try again.');
       }
 
+      setResetToken(data.resetToken);
       setStep('password');
       setOtp('');
     } catch (err: any) {
@@ -112,7 +114,7 @@ function VerifyOTPContent() {
     setLoading(true);
 
     try {
-      const data = await resetPassword(email, newPassword);
+      const data = await resetPassword(email, newPassword, resetToken);
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to reset password.');

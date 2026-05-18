@@ -38,7 +38,6 @@ export default function Home() {
       const user = data.user;
       sessionStorage.setItem('truth_panel_user', JSON.stringify(user));
       localStorage.setItem('truth_panel_token', data.session.access_token);
-      localStorage.setItem('truth_panel_refresh_token', data.session.refresh_token);
 
       if (user.role === 'admin') {
         router.push('/Frontend/AdminPanel/Dashboard');
